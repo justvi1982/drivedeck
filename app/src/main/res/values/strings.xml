@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DriveDeck</string>
+    <string name="listener_label">DriveDeck now playing</string>
+    <string name="not_playing">Not playing</string>
+    <string name="allow_media">Tap to show what\'s playing</string>
+    <string name="navigate">Navigate</string>
+    <string name="speed">SPEED</string>
+    <string name="kmh">km/h</string>
+    <string name="apps">Apps</string>
+    <string name="drawer_hint">Long-press an app to pin or unpin it</string>
+    <string name="settings">DriveDeck settings</string>
+    <string name="choose_nav">Choose navigation app</string>
+    <string name="media_access">Now-playing access</string>
+    <string name="android_settings">Android settings</string>
+    <string name="switch_launcher">Switch home screen (launcher)</string>
+    <string name="pinned">Pinned to dock</string>
+    <string name="unpinned">Removed from dock</string>
+    <string name="dock_full">Dock is full. Long-press a dock icon to remove it first.</string>
+    <string name="no_nav">No navigation app found. Long-press the map to pick one.</string>
+    <string name="open_failed">Couldn\'t open that app</string>
+    <string name="cd_prev">Previous</string>
+    <string name="cd_play">Play or pause</string>
+    <string name="cd_next">Next</string>
+    <string name="cd_apps">All apps</string>
+    <string name="cd_home">Go to home screen</string>
+
+    <string name="gesture_service_label">DriveDeck home button and swipe</string>
+    <string name="gesture_service_desc">Shows a floating home button and lets you swipe up from the bottom of the screen to go home. It hides itself in apps you choose. It doesn\'t read anything on your screen.</string>
+    <string name="home_controls">Home button and swipe up</string>
+    <string name="home_controls_off_title">Turn on home controls</string>
+    <string name="media_off_title">Show what\'s playing</string>
+    <string name="enable_msg">In the next screen, find \"%1$s\" and switch it on.\n\nIf Android says it\'s a restricted setting: open Settings → Apps → DriveDeck, tap the ⋮ menu, choose \"Allow restricted settings\", then try again.</string>
+    <string name="open_settings">Open settings</string>
+    <string name="cancel">Cancel</string>
+    <string name="done">Done</string>
+    <string name="opt_home_button">Floating home button</string>
+    <string name="opt_swipe_home">Swipe up from the bottom</string>
+    <string name="hide_in_apps">Hide in apps…</string>
+    <string name="hide_in_title">Hide home controls in</string>
+</resources>
