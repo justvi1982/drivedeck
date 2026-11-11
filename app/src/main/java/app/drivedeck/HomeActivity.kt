@@ -107,7 +107,10 @@ class HomeActivity : Activity() {
     private lateinit var source: TextView
     private lateinit var progress: ProgressBar
     private lateinit var btnPlay: ImageButton
-    private lateinit var speed: TextView
+    private lateinit var tileIcon: ImageView
+    private lateinit var tileLabel: TextView
+    private lateinit var tileTitle: TextView
+    private lateinit var tileText: TextView
     private lateinit var weekday: TextView
     private lateinit var day: TextView
     private lateinit var month: TextView
@@ -119,8 +122,11 @@ class HomeActivity : Activity() {
     // Location
     private var myLocation: MyLocationNewOverlay? = null
     private var locationManager: LocationManager? = null
-    private val locationListener = LocationListener { loc -> renderSpeed(loc) }
-    private val staleSpeed = Runnable { speed.text = "--" }
+    private val locationListener = LocationListener { loc -> saveLocation(loc) }
+
+    // Light / dark
+    private var appliedNight = true
+    private val alertListener: () -> Unit = { renderTile() }
 
     // Media
     private var sessionManager: MediaSessionManager? = null
@@ -157,6 +163,17 @@ class HomeActivity : Activity() {
 
     // ---------------------------------------------------------------- lifecycle
 
+    /** Pick light or dark colours before anything is drawn. */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase)
+        appliedNight = DayNight.isNight(Prefs.get(newBase))
+        val cfg = Configuration()
+        val base = newBase.resources.configuration.uiMode
+        cfg.uiMode = (base and Configuration.UI_MODE_NIGHT_MASK.inv()) or
+            (if (appliedNight) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO)
+        applyOverrideConfiguration(cfg)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs.get(this)
@@ -179,6 +196,7 @@ class HomeActivity : Activity() {
         renderDock()
         renderNavLabel()
         renderMedia()
+        renderTile()
         applyOrientation(resources.configuration)
         loadAppsAsync()
 
@@ -206,6 +224,8 @@ class HomeActivity : Activity() {
         })
         updateClock()
         startMedia()
+        MediaListener.addListener(alertListener)
+        renderTile()
         handler.post(progressTick)
     }
 
@@ -215,10 +235,14 @@ class HomeActivity : Activity() {
         startLocation()
         renderDock()
         renderNavLabel()
+        renderTile()
         hideSystemBars()
+        HomeGestureService.setHomeVisible(true)
+        if (DayNight.isNight(prefs) != appliedNight) recreate()
     }
 
     override fun onPause() {
+        HomeGestureService.setHomeVisible(false)
         stopLocation()
         map.onPause()
         super.onPause()
@@ -226,6 +250,7 @@ class HomeActivity : Activity() {
 
     override fun onStop() {
         handler.removeCallbacks(progressTick)
+        MediaListener.removeListener(alertListener)
         stopMedia()
         try { unregisterReceiver(timeReceiver) } catch (e:Exception) {}
         try { unregisterReceiver(packageReceiver) } catch (e:Exception) {}
@@ -278,7 +303,10 @@ class HomeActivity : Activity() {
         source = findViewById(R.id.source)
         progress = findViewById(R.id.progress)
         btnPlay = findViewById(R.id.btnPlay)
-        speed = findViewById(R.id.speed)
+        tileIcon = findViewById(R.id.tileIcon)
+        tileLabel = findViewById(R.id.tileLabel)
+        tileTitle = findViewById(R.id.tileTitle)
+        tileText = findViewById(R.id.tileText)
         weekday = findViewById(R.id.weekday)
         day = findViewById(R.id.day)
         month = findViewById(R.id.month)
@@ -289,6 +317,10 @@ class HomeActivity : Activity() {
         art.clipToOutline = true
 
         clock.setOnLongClickListener { showSettings(); true }
+
+        val tile = findViewById<View>(R.id.tile)
+        tile.setOnClickListener { openTileApp() }
+        tile.setOnLongClickListener { chooseTileApp(); true }
     }
 
     private fun setupMap() {
@@ -301,7 +333,7 @@ class HomeActivity : Activity() {
         val tiles = map.overlayManager.tilesOverlay
         tiles.setLoadingBackgroundColor(getColor(R.color.card))
         tiles.setLoadingLineColor(getColor(R.color.card))
-        tiles.setColorFilter(darkMapFilter())
+        if (appliedNight) tiles.setColorFilter(darkMapFilter())
 
         val touch = findViewById<View>(R.id.mapTouch)
         touch.setOnClickListener { openNavigation() }
@@ -398,6 +430,10 @@ class HomeActivity : Activity() {
     // ---------------------------------------------------------------- clock
 
     private fun updateClock() {
+        if (::prefs.isInitialized && DayNight.isNight(prefs) != appliedNight) {
+            recreate()
+            return
+        }
         val now = Date()
         val loc = Locale.getDefault()
         val pattern = if (DateFormat.is24HourFormat(this)) "HH:mm" else "h:mm"
@@ -507,7 +543,7 @@ class HomeActivity : Activity() {
             cell.setPadding(0, dp(6), 0, dp(6))
             cell.addView(ImageView(this@HomeActivity), LinearLayout.LayoutParams(dp(64), dp(64)))
             val label = TextView(this@HomeActivity)
-            label.setTextColor(Color.WHITE)
+            label.setTextColor(getColor(R.color.text))
             label.textSize = 13f
             label.maxLines = 1
             label.ellipsize = TextUtils.TruncateAt.END
@@ -545,7 +581,7 @@ class HomeActivity : Activity() {
     private fun chooseNavApp() {
         val list = apps.ifEmpty { Apps.load(this) }
         if (list.isEmpty()) return
-        AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+        AlertDialog.Builder(this)
             .setTitle(R.string.choose_nav)
             .setItems(list.map { it.label }.toTypedArray()) { _, which ->
                 prefs.edit().putString(KEY_NAV, list[which].packageName).apply()
@@ -571,7 +607,10 @@ class HomeActivity : Activity() {
         try {
             val last = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
                 ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-            if (last != null) map.controller.setCenter(GeoPoint(last.latitude, last.longitude))
+            if (last != null) {
+                map.controller.setCenter(GeoPoint(last.latitude, last.longitude))
+                saveLocation(last)
+            }
         } catch (e:SecurityException) {
         } catch (e:IllegalArgumentException) {
         }
@@ -579,7 +618,7 @@ class HomeActivity : Activity() {
         for (provider in listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)) {
             try {
                 if (lm.allProviders.contains(provider)) {
-                    lm.requestLocationUpdates(provider, 1000L, 0f, locationListener, Looper.getMainLooper())
+                    lm.requestLocationUpdates(provider, 60_000L, 500f, locationListener, Looper.getMainLooper())
                 }
             } catch (e:SecurityException) {
             } catch (e:IllegalArgumentException) {
@@ -590,16 +629,98 @@ class HomeActivity : Activity() {
     private fun stopLocation() {
         myLocation?.disableMyLocation()
         try { locationManager?.removeUpdates(locationListener) } catch (e:Exception) {}
-        handler.removeCallbacks(staleSpeed)
     }
 
-    private fun renderSpeed(loc: Location) {
-        // Only trust real GPS speed; network fixes don't carry a useful one.
-        if (loc.provider != LocationManager.GPS_PROVIDER) return
-        val kmh = if (loc.hasSpeed()) (loc.speed * 3.6f).roundToInt() else 0
-        speed.text = if (kmh < 2) "0" else kmh.toString()
-        handler.removeCallbacks(staleSpeed)
-        handler.postDelayed(staleSpeed, 8000)
+    /** Remember roughly where the car is, for working out sunrise and sunset. */
+    private fun saveLocation(loc: Location) {
+        prefs.edit()
+            .putFloat(Prefs.KEY_LAT, loc.latitude.toFloat())
+            .putFloat(Prefs.KEY_LON, loc.longitude.toFloat())
+            .apply()
+    }
+
+    // ---------------------------------------------------------------- app tile (Flitsmeister)
+
+    private fun renderTile() {
+        val pkg = Prefs.tileApp(prefs)?.takeIf { Apps.isInstalled(this, it) }
+        if (pkg == null) {
+            tileIcon.setImageDrawable(null)
+            tileIcon.visibility = View.GONE
+            tileLabel.text = getString(R.string.tile_label_empty)
+            tileLabel.setTextColor(getColor(R.color.text2))
+            tileTitle.text = getString(R.string.tile_pick)
+            tileText.text = ""
+            return
+        }
+        tileIcon.visibility = View.VISIBLE
+        tileIcon.setImageDrawable(Apps.iconFor(this, pkg, dp(22)))
+        tileLabel.text = Apps.label(this, pkg).uppercase(Locale.getDefault())
+
+        val alert = MediaListener.latest
+        when {
+            !hasMediaAccess() -> {
+                tileLabel.setTextColor(getColor(R.color.text2))
+                tileTitle.text = getString(R.string.tile_no_access)
+                tileText.text = getString(R.string.tile_no_access_hint)
+            }
+            alert == null -> {
+                tileLabel.setTextColor(getColor(R.color.text2))
+                tileTitle.text = getString(R.string.tile_no_alerts)
+                tileText.text = getString(R.string.tile_tap_to_open)
+            }
+            else -> {
+                // A fresh alert turns the label red; the app's permanent "running" notice stays grey.
+                tileLabel.setTextColor(getColor(if (alert.ongoing) R.color.text2 else R.color.red))
+                tileTitle.text = alert.title.ifBlank { alert.text }
+                tileText.text = if (alert.title.isBlank()) "" else alert.text
+            }
+        }
+    }
+
+    private fun openTileApp() {
+        val pkg = Prefs.tileApp(prefs)
+        when {
+            pkg == null || !Apps.isInstalled(this, pkg) -> chooseTileApp()
+            !hasMediaAccess() -> explainThenOpen(
+                R.string.media_off_title,
+                getString(R.string.listener_label),
+                Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS),
+            )
+            !Apps.launch(this, pkg) -> toast(getString(R.string.open_failed))
+        }
+    }
+
+    private fun chooseTileApp() {
+        val list = apps.ifEmpty { Apps.load(this) }
+        if (list.isEmpty()) return
+        AlertDialog.Builder(this)
+            .setTitle(R.string.choose_tile)
+            .setItems(list.map { it.label }.toTypedArray()) { _, which ->
+                prefs.edit().putString(Prefs.KEY_TILE_APP, list[which].packageName).apply()
+                MediaListener.rebuild()
+                renderTile()
+            }
+            .show()
+    }
+
+    // ---------------------------------------------------------------- appearance
+
+    private fun chooseAppearance() {
+        val modes = arrayOf(DayNight.MODE_AUTO, DayNight.MODE_LIGHT, DayNight.MODE_DARK)
+        val labels = arrayOf(
+            getString(R.string.theme_auto),
+            getString(R.string.theme_light),
+            getString(R.string.theme_dark),
+        )
+        val current = modes.indexOf(DayNight.mode(prefs)).coerceAtLeast(0)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.appearance)
+            .setSingleChoiceItems(labels, current) { dialog, which ->
+                prefs.edit().putString(Prefs.KEY_THEME, modes[which]).apply()
+                dialog.dismiss()
+                if (DayNight.isNight(prefs) != appliedNight) recreate()
+            }
+            .show()
     }
 
     // ---------------------------------------------------------------- media
@@ -759,23 +880,27 @@ class HomeActivity : Activity() {
         val items = arrayOf(
             getString(R.string.choose_nav),
             getString(R.string.home_controls),
+            getString(R.string.appearance),
+            getString(R.string.choose_tile),
             getString(R.string.media_access),
             getString(R.string.switch_launcher),
             getString(R.string.android_settings),
         )
-        AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+        AlertDialog.Builder(this)
             .setTitle(R.string.settings)
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> chooseNavApp()
                     1 -> showHomeControls()
-                    2 -> explainThenOpen(
+                    2 -> chooseAppearance()
+                    3 -> chooseTileApp()
+                    4 -> explainThenOpen(
                         R.string.media_off_title,
                         getString(R.string.listener_label),
                         Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS),
                     )
-                    3 -> if (!safeStart(Intent(Settings.ACTION_HOME_SETTINGS))) safeStart(Intent(Settings.ACTION_SETTINGS))
-                    4 -> safeStart(Intent(Settings.ACTION_SETTINGS))
+                    5 -> if (!safeStart(Intent(Settings.ACTION_HOME_SETTINGS))) safeStart(Intent(Settings.ACTION_SETTINGS))
+                    6 -> safeStart(Intent(Settings.ACTION_SETTINGS))
                 }
             }
             .show()
@@ -801,7 +926,7 @@ class HomeActivity : Activity() {
             prefs.getBoolean(Prefs.KEY_HOME_BUTTON, true),
             prefs.getBoolean(Prefs.KEY_SWIPE_HOME, true),
         )
-        AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+        AlertDialog.Builder(this)
             .setTitle(R.string.home_controls)
             .setMultiChoiceItems(
                 arrayOf(getString(R.string.opt_home_button), getString(R.string.opt_swipe_home)),
@@ -820,7 +945,7 @@ class HomeActivity : Activity() {
         if (list.isEmpty()) return
         val hidden = Prefs.hideIn(prefs).toMutableSet()
         val checked = BooleanArray(list.size) { list[it].packageName in hidden }
-        AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+        AlertDialog.Builder(this)
             .setTitle(R.string.hide_in_title)
             .setMultiChoiceItems(list.map { it.label }.toTypedArray(), checked) { _, which, isChecked ->
                 val pkg = list[which].packageName
@@ -833,7 +958,7 @@ class HomeActivity : Activity() {
 
     /** Explain what to switch on (and the Android 13 "restricted setting" step), then open that settings page. */
     private fun explainThenOpen(titleRes: Int, serviceLabel: String, settingsIntent: Intent) {
-        AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+        AlertDialog.Builder(this)
             .setTitle(titleRes)
             .setMessage(getString(R.string.enable_msg, serviceLabel))
             .setPositiveButton(R.string.open_settings) { _, _ ->

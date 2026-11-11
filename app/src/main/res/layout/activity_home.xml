@@ -189,7 +189,7 @@
                                     android:layout_height="wrap_content"
                                     android:ellipsize="end"
                                     android:maxLines="1"
-                                    android:textColor="#CCFFFFFF"
+                                    android:textColor="@color/text_soft"
                                     android:textSize="16sp" />
 
                                 <TextView
@@ -215,7 +215,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="4dp"
                             android:max="1000"
-                            android:progressBackgroundTint="#55FFFFFF"
+                            android:progressBackgroundTint="@color/track"
                             android:progressTint="@color/text" />
 
                         <LinearLayout
@@ -260,41 +260,67 @@
                     </LinearLayout>
                 </FrameLayout>
 
-                <!-- Small cards: speed + date -->
+                <!-- Small cards: app tile + date -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
                     android:layout_weight="1"
                     android:orientation="horizontal">
 
+                    <!-- App tile: Flitsmeister by default, shows its latest alert -->
                     <LinearLayout
+                        android:id="@+id/tile"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_margin="6dp"
-                        android:layout_weight="1"
+                        android:layout_weight="1.6"
                         android:background="@drawable/bg_card"
+                        android:foreground="?android:attr/selectableItemBackground"
                         android:gravity="center_vertical"
                         android:orientation="vertical"
-                        android:padding="16dp">
+                        android:padding="14dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <ImageView
+                                android:id="@+id/tileIcon"
+                                android:layout_width="22dp"
+                                android:layout_height="22dp"
+                                android:layout_marginEnd="8dp"
+                                android:importantForAccessibility="no" />
+
+                            <TextView
+                                android:id="@+id/tileLabel"
+                                style="@style/CardLabel"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:ellipsize="end"
+                                android:maxLines="1" />
+                        </LinearLayout>
 
                         <TextView
-                            style="@style/CardLabel"
-                            android:layout_width="wrap_content"
+                            android:id="@+id/tileTitle"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="@string/speed" />
+                            android:layout_marginTop="8dp"
+                            android:ellipsize="end"
+                            android:fontFamily="sans-serif-medium"
+                            android:maxLines="2"
+                            android:textColor="@color/text"
+                            android:textSize="18sp" />
 
                         <TextView
-                            android:id="@+id/speed"
-                            style="@style/BigNumber"
-                            android:layout_width="wrap_content"
+                            android:id="@+id/tileText"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="--" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/kmh"
+                            android:layout_marginTop="2dp"
+                            android:ellipsize="end"
+                            android:maxLines="2"
                             android:textColor="@color/text2"
                             android:textSize="14sp" />
                     </LinearLayout>

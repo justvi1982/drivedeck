@@ -14,6 +14,16 @@ object Prefs {
     const val KEY_HIDE_IN = "hide_in"
     const val KEY_BTN_X = "btn_x"
     const val KEY_BTN_Y = "btn_y"
+    const val KEY_TILE_APP = "tile_app"
+    const val KEY_THEME = "theme"
+    const val KEY_LAT = "lat"
+    const val KEY_LON = "lon"
+
+    const val DEFAULT_TILE_APP = "nl.flitsmeister"
+
+    /** The app shown in the small tile; Flitsmeister unless the user picked another. */
+    fun tileApp(prefs: SharedPreferences): String? =
+        prefs.getString(KEY_TILE_APP, DEFAULT_TILE_APP)?.takeIf { it.isNotBlank() }
 
     fun get(context: Context): SharedPreferences =
         context.getSharedPreferences(NAME, Context.MODE_PRIVATE)

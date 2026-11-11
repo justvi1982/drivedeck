@@ -1,25 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.DriveDeck" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.DriveDeck" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/bg</item>
         <item name="android:statusBarColor">@color/bg</item>
         <item name="android:navigationBarColor">@color/bg</item>
         <item name="android:colorAccent">@color/accent</item>
         <item name="android:colorPrimary">@color/bg</item>
         <item name="android:windowShowWallpaper">false</item>
-    </style>
-
-    <style name="CardLabel">
-        <item name="android:textColor">@color/text2</item>
-        <item name="android:textSize">12sp</item>
-        <item name="android:letterSpacing">0.08</item>
-        <item name="android:fontFamily">sans-serif-medium</item>
-    </style>
-
-    <style name="BigNumber">
-        <item name="android:textColor">@color/text</item>
-        <item name="android:textSize">46sp</item>
-        <item name="android:fontFamily">sans-serif-light</item>
-        <item name="android:includeFontPadding">false</item>
     </style>
 </resources>

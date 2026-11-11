@@ -12,7 +12,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
@@ -26,17 +26,23 @@ jobs:
           gradle-version: "8.14.3"
 
       # A fixed signing key means new builds install as updates over old ones.
-      - name: Restore signing key
-        if: env.KEYSTORE_B64 != ''
+      # The key lives encrypted in signing/; the KEYSTORE_PASSWORD secret unlocks it.
+      - name: Unlock signing key
+        if: env.KEYSTORE_PASSWORD != ''
         run: |
-          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+            -in signing/release.jks.enc -out "$RUNNER_TEMP/release.jks" -pass env:KEYSTORE_PASSWORD
           echo "KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          echo "SIGNED_WITH=release key" >> "$GITHUB_ENV"
+
+      - name: Note test key
+        if: env.KEYSTORE_PASSWORD == ''
+        run: echo "SIGNED_WITH=test key" >> "$GITHUB_ENV"
 
       - name: Build release APK
         env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: drivedeck
+          KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: gradle :app:assembleRelease --stacktrace
 
       - name: Collect APK
@@ -53,5 +59,5 @@ jobs:
         run: |
           gh release delete latest --yes --cleanup-tag || true
           gh release create latest DriveDeck.apk \
-            --title "DriveDeck build ${{ github.run_number }}" \
+            --title "DriveDeck build ${{ github.run_number }} (${{ env.SIGNED_WITH }})" \
             --notes "Open this page on the TBox and tap DriveDeck.apk to install or update."

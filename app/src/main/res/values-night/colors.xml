@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark (after sunset) -->
+    <color name="bg">#FF000000</color>
+    <color name="card">#FF1C1C1E</color>
+    <color name="card2">#FF2C2C2E</color>
+    <color name="text">#FFFFFFFF</color>
+    <color name="text_soft">#CCFFFFFF</color>
+    <color name="text2">#FF8E8E93</color>
+    <color name="accent">#FF0A84FF</color>
+    <color name="red">#FFFF453A</color>
+    <color name="scrim_top">#33000000</color>
+    <color name="scrim_bottom">#E6000000</color>
+    <color name="drawer_bg">#F2000000</color>
+    <color name="pill">#CC1C1C1E</color>
+    <color name="track">#55FFFFFF</color>
+    <color name="ripple">#33FFFFFF</color>
+</resources>

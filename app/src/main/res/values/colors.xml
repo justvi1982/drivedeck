@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bg">#FF000000</color>
-    <color name="card">#FF1C1C1E</color>
-    <color name="card2">#FF2C2C2E</color>
-    <color name="text">#FFFFFFFF</color>
-    <color name="text2">#FF8E8E93</color>
-    <color name="accent">#FF0A84FF</color>
-    <color name="red">#FFFF453A</color>
-    <color name="scrim_top">#33000000</color>
-    <color name="scrim_bottom">#E6000000</color>
-    <color name="drawer_bg">#F2000000</color>
-    <color name="pill">#CC1C1C1E</color>
+    <!-- Light (daytime) -->
+    <color name="bg">#FFF2F2F7</color>
+    <color name="card">#FFFFFFFF</color>
+    <color name="card2">#FFE5E5EA</color>
+    <color name="text">#FF000000</color>
+    <color name="text_soft">#CC000000</color>
+    <color name="text2">#FF6E6E73</color>
+    <color name="accent">#FF007AFF</color>
+    <color name="red">#FFFF3B30</color>
+    <color name="scrim_top">#00FFFFFF</color>
+    <color name="scrim_bottom">#E6FFFFFF</color>
+    <color name="drawer_bg">#F2F2F2F7</color>
+    <color name="pill">#E6FFFFFF</color>
+    <color name="track">#33000000</color>
+    <color name="ripple">#22000000</color>
 </resources>

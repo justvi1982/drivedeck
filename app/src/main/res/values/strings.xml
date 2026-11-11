@@ -5,8 +5,6 @@
     <string name="not_playing">Not playing</string>
     <string name="allow_media">Tap to show what\'s playing</string>
     <string name="navigate">Navigate</string>
-    <string name="speed">SPEED</string>
-    <string name="kmh">km/h</string>
     <string name="apps">Apps</string>
     <string name="drawer_hint">Long-press an app to pin or unpin it</string>
     <string name="settings">DriveDeck settings</string>
@@ -38,4 +36,15 @@
     <string name="opt_swipe_home">Swipe up from the bottom</string>
     <string name="hide_in_apps">Hide in apps…</string>
     <string name="hide_in_title">Hide home controls in</string>
+    <string name="choose_tile">Choose app for the small tile</string>
+    <string name="tile_label_empty">SHORTCUT</string>
+    <string name="tile_pick">Tap to pick an app</string>
+    <string name="tile_no_alerts">No alerts right now</string>
+    <string name="tile_tap_to_open">Tap to open</string>
+    <string name="tile_no_access">Alerts are off</string>
+    <string name="tile_no_access_hint">Tap to let DriveDeck see them</string>
+    <string name="appearance">Light and dark mode</string>
+    <string name="theme_auto">Automatic (light by day, dark after sunset)</string>
+    <string name="theme_light">Always light</string>
+    <string name="theme_dark">Always dark</string>
 </resources>

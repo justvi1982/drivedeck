@@ -1,6 +1,7 @@
 package app.drivedeck
 
 import android.accessibilityservice.AccessibilityService
+import android.content.ComponentName
 import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.graphics.PixelFormat
@@ -27,6 +28,20 @@ import kotlin.math.roundToInt
  */
 class HomeGestureService : AccessibilityService() {
 
+    companion object {
+        /** Set by the home screen itself (same process), so we never have to guess when it's showing. */
+        @Volatile
+        var homeVisible = false
+            private set
+
+        private var instance: HomeGestureService? = null
+
+        fun setHomeVisible(visible: Boolean) {
+            homeVisible = visible
+            instance?.let { s -> s.handler.post { s.refresh() } }
+        }
+    }
+
     private lateinit var wm: WindowManager
     private lateinit var prefs: SharedPreferences
     private val handler = Handler(Looper.getMainLooper())
@@ -41,7 +56,7 @@ class HomeGestureService : AccessibilityService() {
     private var barShown = false
 
     private var foreground: String? = null
-    private val launchableCache = HashMap<String, Boolean>()
+    private val activityCache = HashMap<String, Boolean>()
 
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> refresh() }
     private val fadeButton = Runnable { button?.animate()?.alpha(0.28f)?.setDuration(400)?.start() }
@@ -54,14 +69,20 @@ class HomeGestureService : AccessibilityService() {
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
         createButton()
         createBar()
+        instance = this
         refresh()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
-        // Ignore pop-ups, keyboards and system UI: only real apps (and our home screen) count.
-        if (pkg != packageName && !isLaunchable(pkg)) return
+        // Our own windows (including these overlays appearing) say nothing about which app is open;
+        // the home screen reports itself through setHomeVisible().
+        if (pkg == packageName) return
+        // Only count real app screens. Pop-ups, toasts, keyboards and floating docks are ignored,
+        // otherwise e.g. Carlinkit's floating button would look like "the app in front".
+        val cls = event.className?.toString() ?: return
+        if (!isActivity(pkg, cls)) return
         if (pkg == foreground) return
         foreground = pkg
         refresh()
@@ -85,6 +106,7 @@ class HomeGestureService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        if (instance === this) instance = null
         try { prefs.unregisterOnSharedPreferenceChangeListener(prefsListener) } catch (e: Exception) {}
         setButtonShown(false)
         setBarShown(false)
@@ -95,9 +117,10 @@ class HomeGestureService : AccessibilityService() {
     // ---------------------------------------------------------------- show / hide
 
     private fun refresh() {
+        if (!::prefs.isInitialized) return
         val fg = foreground
-        val atHome = fg == null || fg == packageName
-        val hiddenHere = fg != null && fg in Prefs.hideIn(prefs)
+        val atHome = homeVisible
+        val hiddenHere = !atHome && fg != null && fg in Prefs.hideIn(prefs)
         val wantButton = prefs.getBoolean(Prefs.KEY_HOME_BUTTON, true) && !atHome && !hiddenHere
         val wantBar = prefs.getBoolean(Prefs.KEY_SWIPE_HOME, true) && !atHome && !hiddenHere
         setButtonShown(wantButton)
@@ -275,8 +298,16 @@ class HomeGestureService : AccessibilityService() {
         try { wm.updateViewLayout(v, p) } catch (e: Exception) {}
     }
 
-    private fun isLaunchable(pkg: String): Boolean =
-        launchableCache.getOrPut(pkg) { packageManager.getLaunchIntentForPackage(pkg) != null }
+    private fun isActivity(pkg: String, cls: String): Boolean =
+        activityCache.getOrPut("$pkg/$cls") {
+            try {
+                @Suppress("DEPRECATION")
+                packageManager.getActivityInfo(ComponentName(pkg, cls), 0)
+                true
+            } catch (e: Exception) {
+                false
+            }
+        }
 
     private fun screenWidth(): Int = resources.displayMetrics.widthPixels
     private fun screenHeight(): Int = resources.displayMetrics.heightPixels
