@@ -774,7 +774,7 @@ class HomeActivity : Activity() {
         tileIcon.setImageDrawable(Apps.iconFor(this, pkg, dp(22)))
         tileLabel.text = Apps.label(this, pkg).uppercase(Locale.getDefault())
 
-        val alert = MediaListener.latest
+        val alert = MediaListener.tile
         when {
             !hasMediaAccess() -> {
                 tileLabel.setTextColor(getColor(R.color.text2))
