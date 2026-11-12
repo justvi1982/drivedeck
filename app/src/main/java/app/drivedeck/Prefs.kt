@@ -19,7 +19,13 @@ object Prefs {
     const val KEY_LAT = "lat"
     const val KEY_LON = "lon"
 
+    const val KEY_SHOW_ON_HOME = "show_on_home"
+    const val KEY_PINS = "pins"
+    const val KEY_AUTOSTART = "autostart_tile_app"
+    const val KEY_LAST_BOOT = "last_boot"
+
     const val DEFAULT_TILE_APP = "nl.flitsmeister"
+    const val MAX_PINS = 2
 
     /** The app shown in the small tile; Flitsmeister unless the user picked another. */
     fun tileApp(prefs: SharedPreferences): String? =

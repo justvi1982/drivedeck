@@ -110,6 +110,70 @@
                         android:textColor="@color/text"
                         android:textSize="16sp" />
                 </LinearLayout>
+
+                <!-- Next turn from the navigation app (Google Maps), when it's guiding -->
+                <LinearLayout
+                    android:id="@+id/navCard"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|start"
+                    android:layout_margin="12dp"
+                    android:background="@drawable/bg_nav_card"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?android:attr/selectableItemBackground"
+                    android:gravity="center_vertical"
+                    android:minWidth="200dp"
+                    android:orientation="horizontal"
+                    android:padding="14dp"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:id="@+id/navIcon"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginEnd="14dp"
+                        android:importantForAccessibility="no"
+                        android:scaleType="fitCenter" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/navTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:fontFamily="sans-serif-medium"
+                            android:maxLines="2"
+                            android:maxWidth="280dp"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="22sp" />
+
+                        <TextView
+                            android:id="@+id/navText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:maxLines="2"
+                            android:maxWidth="280dp"
+                            android:textColor="#E6FFFFFF"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:id="@+id/navSub"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:maxWidth="280dp"
+                            android:textColor="#BFFFFFFF"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+                </LinearLayout>
             </FrameLayout>
 
             <LinearLayout
@@ -260,7 +324,7 @@
                     </LinearLayout>
                 </FrameLayout>
 
-                <!-- Small cards: app tile + date -->
+                <!-- Wide app tile (Flitsmeister) -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
@@ -273,7 +337,7 @@
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_margin="6dp"
-                        android:layout_weight="1.6"
+                        android:layout_weight="1"
                         android:background="@drawable/bg_card"
                         android:foreground="?android:attr/selectableItemBackground"
                         android:gravity="center_vertical"
@@ -321,38 +385,6 @@
                             android:layout_marginTop="2dp"
                             android:ellipsize="end"
                             android:maxLines="2"
-                            android:textColor="@color/text2"
-                            android:textSize="14sp" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_margin="6dp"
-                        android:layout_weight="1"
-                        android:background="@drawable/bg_card"
-                        android:gravity="center_vertical"
-                        android:orientation="vertical"
-                        android:padding="16dp">
-
-                        <TextView
-                            android:id="@+id/weekday"
-                            style="@style/CardLabel"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/red" />
-
-                        <TextView
-                            android:id="@+id/day"
-                            style="@style/BigNumber"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp" />
-
-                        <TextView
-                            android:id="@+id/month"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
                             android:textColor="@color/text2"
                             android:textSize="14sp" />
                     </LinearLayout>

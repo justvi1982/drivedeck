@@ -43,7 +43,26 @@ jobs:
         env:
           KEY_ALIAS: drivedeck
           KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        run: gradle :app:assembleRelease --stacktrace
+        run: |
+          set -o pipefail
+          gradle :app:assembleRelease 2>&1 | tee build.log
+
+      # If the build breaks, publish the errors where they can be read without logging in.
+      - name: Publish build errors
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          grep -E "^e: |error:|What went wrong|FAILED|Exception" build.log | head -60 > errors.txt || true
+          [ -s errors.txt ] || tail -80 build.log > errors.txt
+          gh release delete build-errors --yes --cleanup-tag || true
+          gh release create build-errors build.log --prerelease \
+            --title "Build ${{ github.run_number }} failed" --notes-file errors.txt
+
+      - name: Clear old build errors
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete build-errors --yes --cleanup-tag || true
 
       - name: Collect APK
         run: cp app/build/outputs/apk/release/app-release.apk DriveDeck.apk

@@ -11,7 +11,12 @@ import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.Typeface
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.RenderEffect
@@ -45,6 +50,7 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import org.osmdroid.config.Configuration as OsmConfig
@@ -63,28 +69,8 @@ import kotlin.math.roundToInt
 class HomeActivity : Activity() {
 
     companion object {
-        private const val KEY_DOCK = Prefs.KEY_DOCK
-        private const val KEY_NAV = Prefs.KEY_NAV
-        private const val MAX_DOCK = 4
         private const val REQ_LOCATION = 1
-
-        private val NAV_CANDIDATES = listOf(
-            "com.waze",
-            "com.google.android.apps.maps",
-            "app.organicmaps",
-            "net.osmand.plus",
-            "net.osmand",
-            "com.here.app.maps",
-            "com.sygic.aura",
-            "com.tomtom.gplay.navapp",
-        )
-        private val DOCK_CANDIDATES = listOf(
-            "com.spotify.music",
-            "com.google.android.apps.youtube.music",
-            "com.google.android.youtube",
-            "com.netflix.mediaclient",
-            "com.android.chrome",
-        )
+        private const val AUTOSTART_RETURN_MS = 6000L
     }
 
     private lateinit var prefs: SharedPreferences
@@ -111,9 +97,11 @@ class HomeActivity : Activity() {
     private lateinit var tileLabel: TextView
     private lateinit var tileTitle: TextView
     private lateinit var tileText: TextView
-    private lateinit var weekday: TextView
-    private lateinit var day: TextView
-    private lateinit var month: TextView
+    private lateinit var navCard: View
+    private lateinit var navIcon: ImageView
+    private lateinit var navTitle: TextView
+    private lateinit var navText: TextView
+    private lateinit var navSub: TextView
 
     // Apps
     private var apps: List<AppEntry> = emptyList()
@@ -122,11 +110,12 @@ class HomeActivity : Activity() {
     // Location
     private var myLocation: MyLocationNewOverlay? = null
     private var locationManager: LocationManager? = null
-    private val locationListener = LocationListener { loc -> saveLocation(loc) }
+    private val locationListener = LocationListener { loc -> onLocation(loc) }
 
     // Light / dark
     private var appliedNight = true
-    private val alertListener: () -> Unit = { renderTile() }
+    private val alertListener: () -> Unit = { renderTile(); renderNav() }
+    private var lastSavedLocation = 0L
 
     // Media
     private var sessionManager: MediaSessionManager? = null
@@ -197,8 +186,10 @@ class HomeActivity : Activity() {
         renderNavLabel()
         renderMedia()
         renderTile()
+        renderNav()
         applyOrientation(resources.configuration)
         loadAppsAsync()
+        maybeAutostartTileApp()
 
         if (!hasLocationPermission()) {
             requestPermissions(
@@ -226,6 +217,7 @@ class HomeActivity : Activity() {
         startMedia()
         MediaListener.addListener(alertListener)
         renderTile()
+        renderNav()
         handler.post(progressTick)
     }
 
@@ -237,12 +229,12 @@ class HomeActivity : Activity() {
         renderNavLabel()
         renderTile()
         hideSystemBars()
-        HomeGestureService.setHomeVisible(true)
+        HomeGestureService.setHomeVisible(true, currentDisplayId())
         if (DayNight.isNight(prefs) != appliedNight) recreate()
     }
 
     override fun onPause() {
-        HomeGestureService.setHomeVisible(false)
+        HomeGestureService.setHomeVisible(false, currentDisplayId())
         stopLocation()
         map.onPause()
         super.onPause()
@@ -307,9 +299,16 @@ class HomeActivity : Activity() {
         tileLabel = findViewById(R.id.tileLabel)
         tileTitle = findViewById(R.id.tileTitle)
         tileText = findViewById(R.id.tileText)
-        weekday = findViewById(R.id.weekday)
-        day = findViewById(R.id.day)
-        month = findViewById(R.id.month)
+        navCard = findViewById(R.id.navCard)
+        navIcon = findViewById(R.id.navIcon)
+        navTitle = findViewById(R.id.navTitle)
+        navText = findViewById(R.id.navText)
+        navSub = findViewById(R.id.navSub)
+        navCard.setOnClickListener { openNavigation() }
+        // The number of rail slots depends on the screen height, so redraw when it's known or changes.
+        dock.addOnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom ->
+            if (bottom - top != oldBottom - oldTop) dock.post { renderDock() }
+        }
 
         // Rounded corners actually clip the map and album art.
         mapCard.clipToOutline = true
@@ -438,62 +437,108 @@ class HomeActivity : Activity() {
         val loc = Locale.getDefault()
         val pattern = if (DateFormat.is24HourFormat(this)) "HH:mm" else "h:mm"
         clock.text = SimpleDateFormat(pattern, loc).format(now)
-        weekday.text = SimpleDateFormat("EEEE", loc).format(now).uppercase(loc)
-        day.text = SimpleDateFormat("d", loc).format(now)
-        month.text = SimpleDateFormat("MMMM", loc).format(now)
     }
 
     // ---------------------------------------------------------------- dock & drawer
 
-    private fun pinned(): MutableList<String> {
-        val saved = prefs.getString(KEY_DOCK, null)
+    /** Up to two pinned apps; the phone app by default. */
+    private fun pins(): MutableList<String> {
+        val saved = prefs.getString(Prefs.KEY_PINS, null)
         if (saved != null) return saved.split(",").filter { it.isNotBlank() }.toMutableList()
-        val defaults = mutableListOf<String>()
-        navPackage()?.let { defaults.add(it) }
-        DOCK_CANDIDATES.filter { Apps.isInstalled(this, it) }.forEach {
-            if (defaults.size < MAX_DOCK && it !in defaults) defaults.add(it)
-        }
-        return defaults
+        return listOfNotNull(Apps.phonePackage(this)).toMutableList()
     }
 
-    private fun savePinned(list: List<String>) {
-        prefs.edit().putString(KEY_DOCK, list.joinToString(",")).apply()
+    private fun savePins(list: List<String>) {
+        prefs.edit().putString(Prefs.KEY_PINS, list.joinToString(",")).apply()
     }
 
+    /** Left rail: pinned apps on top, then the most recently used apps (if Usage access is on). */
     private fun renderDock() {
+        if (dock.height == 0) return  // drawn again from the layout listener once sized
         dock.removeAllViews()
-        val size = dp(54)
-        pinned().filter { Apps.isInstalled(this, it) }.take(MAX_DOCK).forEach { pkg ->
-            val icon = ImageView(this)
-            icon.layoutParams = LinearLayout.LayoutParams(size, size).apply {
-                topMargin = dp(8)
-                bottomMargin = dp(8)
-            }
-            icon.setImageDrawable(Apps.iconFor(this, pkg, size))
-            icon.contentDescription = Apps.label(this, pkg)
-            icon.setOnClickListener {
-                pressBounce(it)
-                if (!Apps.launch(this, pkg)) toast(getString(R.string.open_failed))
-            }
-            icon.setOnLongClickListener { togglePin(pkg); true }
-            dock.addView(icon)
+        val size = dp(50)
+        val slot = size + dp(14)
+        val fits = maxOf(1, (dock.height - dp(12)) / slot)
+
+        val pinned = pins().filter { Apps.isInstalled(this, it) }.take(Prefs.MAX_PINS)
+        pinned.forEach { addRailIcon(it, size, pinned = true) }
+
+        val room = fits - pinned.size
+        if (room <= 0) return
+        if (!Apps.hasUsageAccess(this)) {
+            if (pinned.isNotEmpty()) addRailDivider()
+            addRecentPrompt(size)
+            return
         }
+        val recent = Apps.recent(this, pinned.toSet(), room)
+        if (recent.isNotEmpty() && pinned.isNotEmpty()) addRailDivider()
+        recent.forEach { addRailIcon(it, size, pinned = false) }
+    }
+
+    private fun addRailIcon(pkg: String, size: Int, pinned: Boolean) {
+        val icon = ImageView(this)
+        icon.layoutParams = LinearLayout.LayoutParams(size, size).apply {
+            topMargin = dp(7)
+            bottomMargin = dp(7)
+        }
+        icon.setImageDrawable(Apps.iconFor(this, pkg, size))
+        icon.contentDescription = Apps.label(this, pkg)
+        icon.setOnClickListener {
+            pressBounce(it)
+            if (!Apps.launch(this, pkg)) toast(getString(R.string.open_failed))
+        }
+        icon.setOnLongClickListener { togglePin(pkg); true }
+        dock.addView(icon)
+    }
+
+    private fun addRailDivider() {
+        val line = View(this)
+        line.setBackgroundResource(R.drawable.bg_divider)
+        line.layoutParams = LinearLayout.LayoutParams(dp(28), dp(2)).apply {
+            topMargin = dp(4)
+            bottomMargin = dp(4)
+        }
+        dock.addView(line)
+    }
+
+    /** Shown in place of recent apps until Usage access is switched on. */
+    private fun addRecentPrompt(size: Int) {
+        val b = ImageView(this)
+        b.layoutParams = LinearLayout.LayoutParams(size, size).apply { topMargin = dp(7) }
+        b.setBackgroundResource(R.drawable.bg_circle)
+        val p = dp(13)
+        b.setPadding(p, p, p, p)
+        b.setImageResource(R.drawable.ic_recent)
+        b.contentDescription = getString(R.string.recent_off_title)
+        b.setOnClickListener { askUsageAccess() }
+        dock.addView(b)
+    }
+
+    private fun askUsageAccess() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.recent_off_title)
+            .setMessage(R.string.recent_off_msg)
+            .setPositiveButton(R.string.open_settings) { _, _ ->
+                if (!safeStart(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))) safeStart(Intent(Settings.ACTION_SETTINGS))
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun togglePin(pkg: String) {
-        val list = pinned()
+        val list = pins()
         if (pkg in list) {
             list.remove(pkg)
             toast(getString(R.string.unpinned))
         } else {
-            if (list.count { Apps.isInstalled(this, it) } >= MAX_DOCK) {
+            if (list.count { Apps.isInstalled(this, it) } >= Prefs.MAX_PINS) {
                 toast(getString(R.string.dock_full))
                 return
             }
             list.add(pkg)
             toast(getString(R.string.pinned))
         }
-        savePinned(list)
+        savePins(list)
         renderDock()
     }
 
@@ -559,11 +604,7 @@ class HomeActivity : Activity() {
 
     // ---------------------------------------------------------------- navigation & location
 
-    private fun navPackage(): String? {
-        val chosen = prefs.getString(KEY_NAV, null)
-        if (chosen != null && Apps.isInstalled(this, chosen)) return chosen
-        return NAV_CANDIDATES.firstOrNull { Apps.isInstalled(this, it) }
-    }
+    private fun navPackage(): String? = Apps.navPackage(this)
 
     private fun renderNavLabel() {
         navLabel.text = navPackage()?.let { Apps.label(this, it) } ?: getString(R.string.navigate)
@@ -584,8 +625,9 @@ class HomeActivity : Activity() {
         AlertDialog.Builder(this)
             .setTitle(R.string.choose_nav)
             .setItems(list.map { it.label }.toTypedArray()) { _, which ->
-                prefs.edit().putString(KEY_NAV, list[which].packageName).apply()
+                prefs.edit().putString(Prefs.KEY_NAV, list[which].packageName).apply()
                 renderNavLabel()
+                MediaListener.rebuild()
             }
             .show()
     }
@@ -599,7 +641,13 @@ class HomeActivity : Activity() {
         val lm = locationManager ?: getSystemService(LocationManager::class.java)?.also { locationManager = it } ?: return
 
         if (myLocation == null) {
-            myLocation = MyLocationNewOverlay(GpsMyLocationProvider(this), map).also { map.overlays.add(it) }
+            myLocation = MyLocationNewOverlay(GpsMyLocationProvider(this), map).also { overlay ->
+                overlay.setPersonIcon(locationDot())
+                overlay.setPersonAnchor(0.5f, 0.5f)
+                overlay.setDirectionIcon(directionArrow())
+                overlay.setDirectionAnchor(0.5f, 0.5f)
+                map.overlays.add(overlay)
+            }
         }
         myLocation?.enableMyLocation()
         myLocation?.enableFollowLocation()
@@ -618,7 +666,7 @@ class HomeActivity : Activity() {
         for (provider in listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)) {
             try {
                 if (lm.allProviders.contains(provider)) {
-                    lm.requestLocationUpdates(provider, 60_000L, 500f, locationListener, Looper.getMainLooper())
+                    lm.requestLocationUpdates(provider, 1000L, 0f, locationListener, Looper.getMainLooper())
                 }
             } catch (e:SecurityException) {
             } catch (e:IllegalArgumentException) {
@@ -631,12 +679,82 @@ class HomeActivity : Activity() {
         try { locationManager?.removeUpdates(locationListener) } catch (e:Exception) {}
     }
 
+    /** Turn the map so the road ahead points up, and remember roughly where we are. */
+    private fun onLocation(loc: Location) {
+        if (loc.provider == LocationManager.GPS_PROVIDER && loc.hasBearing() && loc.hasSpeed() && loc.speed > 1.5f) {
+            map.mapOrientation = -loc.bearing
+        }
+        val now = System.currentTimeMillis()
+        if (now - lastSavedLocation > 10 * 60 * 1000L) {
+            lastSavedLocation = now
+            saveLocation(loc)
+        }
+    }
+
     /** Remember roughly where the car is, for working out sunrise and sunset. */
     private fun saveLocation(loc: Location) {
         prefs.edit()
             .putFloat(Prefs.KEY_LAT, loc.latitude.toFloat())
             .putFloat(Prefs.KEY_LON, loc.longitude.toFloat())
             .apply()
+    }
+
+    /** Blue navigation arrow with a white edge, shown while driving. */
+    private fun directionArrow(): Bitmap {
+        val s = dp(44)
+        val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val f = s.toFloat()
+        val path = Path().apply {
+            moveTo(f * 0.5f, f * 0.08f)
+            lineTo(f * 0.86f, f * 0.88f)
+            lineTo(f * 0.5f, f * 0.70f)
+            lineTo(f * 0.14f, f * 0.88f)
+            close()
+        }
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        paint.style = Paint.Style.FILL
+        paint.color = getColor(R.color.accent)
+        c.drawPath(path, paint)
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = dp(3).toFloat()
+        paint.strokeJoin = Paint.Join.ROUND
+        paint.color = Color.WHITE
+        c.drawPath(path, paint)
+        return bmp
+    }
+
+    /** Blue dot with a white ring, shown when standing still. */
+    private fun locationDot(): Bitmap {
+        val s = dp(26)
+        val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val r = s / 2f
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        paint.color = Color.WHITE
+        c.drawCircle(r, r, r - dp(1), paint)
+        paint.color = getColor(R.color.accent)
+        c.drawCircle(r, r, r - dp(5), paint)
+        return bmp
+    }
+
+    // ---------------------------------------------------------------- next turn (Google Maps)
+
+    private fun renderNav() {
+        val n = MediaListener.nav
+        if (n == null) {
+            navCard.visibility = View.GONE
+            return
+        }
+        navTitle.text = n.title.ifBlank { n.text }
+        navText.text = if (n.title.isBlank()) "" else n.text
+        navText.visibility = if (navText.text.isNullOrBlank()) View.GONE else View.VISIBLE
+        navSub.text = n.sub
+        navSub.visibility = if (n.sub.isBlank()) View.GONE else View.VISIBLE
+        val icon = try { n.icon?.loadDrawable(this) } catch (e: Exception) { null }
+        navIcon.setImageDrawable(icon)
+        navIcon.visibility = if (icon == null) View.GONE else View.VISIBLE
+        navCard.visibility = View.VISIBLE
     }
 
     // ---------------------------------------------------------------- app tile (Flitsmeister)
@@ -701,6 +819,36 @@ class HomeActivity : Activity() {
                 renderTile()
             }
             .show()
+    }
+
+    // ---------------------------------------------------------------- start Flitsmeister at boot
+
+    /**
+     * Once per start-up of the box: open the tile's app (Flitsmeister) so it runs in the
+     * background, then come straight back to the home screen.
+     */
+    private fun maybeAutostartTileApp() {
+        if (!prefs.getBoolean(Prefs.KEY_AUTOSTART, true)) return
+        val sinceBoot = SystemClock.elapsedRealtime()
+        if (sinceBoot > 10 * 60 * 1000L) return
+        val bootedAt = (System.currentTimeMillis() - sinceBoot) / 60_000L
+        if (prefs.getLong(Prefs.KEY_LAST_BOOT, -1L) == bootedAt) return
+        prefs.edit().putLong(Prefs.KEY_LAST_BOOT, bootedAt).apply()
+        val pkg = Prefs.tileApp(prefs)?.takeIf { Apps.isInstalled(this, it) } ?: return
+        handler.postDelayed({
+            if (!Apps.launch(this, pkg)) return@postDelayed
+            Diag.log("started $pkg after boot")
+            handler.postDelayed({ comeBackHome() }, AUTOSTART_RETURN_MS)
+        }, 1500L)
+    }
+
+    private fun comeBackHome() {
+        val svc = HomeGestureService.instance
+        if (svc != null) {
+            svc.goHome()
+        } else {
+            safeStart(Intent(this, HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+        }
     }
 
     // ---------------------------------------------------------------- appearance
@@ -881,7 +1029,7 @@ class HomeActivity : Activity() {
             getString(R.string.choose_nav),
             getString(R.string.home_controls),
             getString(R.string.appearance),
-            getString(R.string.choose_tile),
+            getString(R.string.tile_settings),
             getString(R.string.media_access),
             getString(R.string.switch_launcher),
             getString(R.string.android_settings),
@@ -893,7 +1041,7 @@ class HomeActivity : Activity() {
                     0 -> chooseNavApp()
                     1 -> showHomeControls()
                     2 -> chooseAppearance()
-                    3 -> chooseTileApp()
+                    3 -> showTileSettings()
                     4 -> explainThenOpen(
                         R.string.media_off_title,
                         getString(R.string.listener_label),
@@ -922,21 +1070,76 @@ class HomeActivity : Activity() {
             )
             return
         }
-        val checked = booleanArrayOf(
-            prefs.getBoolean(Prefs.KEY_HOME_BUTTON, true),
-            prefs.getBoolean(Prefs.KEY_SWIPE_HOME, true),
-        )
+        val keys = arrayOf(Prefs.KEY_HOME_BUTTON, Prefs.KEY_SWIPE_HOME, Prefs.KEY_SHOW_ON_HOME)
+        val defaults = booleanArrayOf(true, true, false)
+        val checked = BooleanArray(keys.size) { prefs.getBoolean(keys[it], defaults[it]) }
         AlertDialog.Builder(this)
             .setTitle(R.string.home_controls)
             .setMultiChoiceItems(
-                arrayOf(getString(R.string.opt_home_button), getString(R.string.opt_swipe_home)),
+                arrayOf(
+                    getString(R.string.opt_home_button),
+                    getString(R.string.opt_swipe_home),
+                    getString(R.string.opt_show_on_home),
+                ),
                 checked,
             ) { _, which, isChecked ->
-                val key = if (which == 0) Prefs.KEY_HOME_BUTTON else Prefs.KEY_SWIPE_HOME
-                prefs.edit().putBoolean(key, isChecked).apply()
+                prefs.edit().putBoolean(keys[which], isChecked).apply()
             }
             .setNeutralButton(R.string.hide_in_apps) { _, _ -> chooseHiddenApps() }
+            .setNegativeButton(R.string.status) { _, _ -> showStatus() }
             .setPositiveButton(R.string.done, null)
+            .show()
+    }
+
+    /** What the home controls are doing, so a photo of this screen tells what's wrong. */
+    private fun showStatus() {
+        val svc = HomeGestureService.instance
+        val sb = StringBuilder()
+        sb.append("Accessibility switch: ").append(if (hasGestureAccess()) "on" else "OFF").append('\n')
+        sb.append("Service running: ").append(if (svc != null) "yes" else "NO").append('\n')
+        sb.append("Home screen on display ").append(currentDisplayId()).append('\n')
+        sb.append("Android ").append(Build.VERSION.RELEASE).append(", ").append(Build.MANUFACTURER)
+            .append(' ').append(Build.MODEL).append("\n\n")
+        svc?.statusLines()?.forEach { sb.append(it).append('\n') }
+        sb.append('\n')
+        Diag.recent(14).forEach { sb.append(it).append('\n') }
+
+        val text = TextView(this)
+        text.text = sb.toString()
+        text.typeface = Typeface.MONOSPACE
+        text.textSize = 12f
+        text.setTextColor(getColor(R.color.text))
+        text.setTextIsSelectable(true)
+        val pad = dp(20)
+        text.setPadding(pad, dp(8), pad, dp(8))
+        val scroll = ScrollView(this)
+        scroll.addView(text)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.status)
+            .setView(scroll)
+            .setPositiveButton(R.string.done, null)
+            .show()
+    }
+
+    private fun showTileSettings() {
+        val autostart = prefs.getBoolean(Prefs.KEY_AUTOSTART, true)
+        val tileName = Prefs.tileApp(prefs)?.takeIf { Apps.isInstalled(this, it) }?.let { Apps.label(this, it) }
+            ?: getString(R.string.tile_label_empty)
+        val items = arrayOf(
+            getString(R.string.choose_tile),
+            getString(if (autostart) R.string.autostart_on else R.string.autostart_off, tileName),
+        )
+        AlertDialog.Builder(this)
+            .setTitle(R.string.tile_settings)
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> chooseTileApp()
+                    1 -> {
+                        prefs.edit().putBoolean(Prefs.KEY_AUTOSTART, !autostart).apply()
+                        toast(getString(if (!autostart) R.string.autostart_now_on else R.string.autostart_now_off, tileName))
+                    }
+                }
+            }
             .show()
     }
 
@@ -995,6 +1198,10 @@ class HomeActivity : Activity() {
     }
 
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+
+    @Suppress("DEPRECATION")
+    private fun currentDisplayId(): Int =
+        if (Build.VERSION.SDK_INT >= 30) display?.displayId ?: 0 else windowManager.defaultDisplay.displayId
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).roundToInt()
 }

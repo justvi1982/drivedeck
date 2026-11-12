@@ -6,7 +6,7 @@
     <string name="allow_media">Tap to show what\'s playing</string>
     <string name="navigate">Navigate</string>
     <string name="apps">Apps</string>
-    <string name="drawer_hint">Long-press an app to pin or unpin it</string>
+    <string name="drawer_hint">Long-press an app to pin it on the left</string>
     <string name="settings">DriveDeck settings</string>
     <string name="choose_nav">Choose navigation app</string>
     <string name="media_access">Now-playing access</string>
@@ -14,7 +14,7 @@
     <string name="switch_launcher">Switch home screen (launcher)</string>
     <string name="pinned">Pinned to dock</string>
     <string name="unpinned">Removed from dock</string>
-    <string name="dock_full">Dock is full. Long-press a dock icon to remove it first.</string>
+    <string name="dock_full">You can pin 2 apps. Long-press a pinned one on the left to remove it first.</string>
     <string name="no_nav">No navigation app found. Long-press the map to pick one.</string>
     <string name="open_failed">Couldn\'t open that app</string>
     <string name="cd_prev">Previous</string>
@@ -47,4 +47,13 @@
     <string name="theme_auto">Automatic (light by day, dark after sunset)</string>
     <string name="theme_light">Always light</string>
     <string name="theme_dark">Always dark</string>
+    <string name="recent_off_title">Show recent apps</string>
+    <string name="recent_off_msg">To show your recently used apps on the left, switch on DriveDeck under \"Usage access\" on the next screen.\n\nIf Android says it\'s a restricted setting: open Settings → Apps → DriveDeck, tap the ⋮ menu, choose \"Allow restricted settings\", then try again.</string>
+    <string name="opt_show_on_home">Also show on the DriveDeck home screen</string>
+    <string name="status">Status</string>
+    <string name="tile_settings">Small tile and Flitsmeister</string>
+    <string name="autostart_on">Start %1$s when the box starts: on</string>
+    <string name="autostart_off">Start %1$s when the box starts: off</string>
+    <string name="autostart_now_on">%1$s will start when the box starts</string>
+    <string name="autostart_now_off">%1$s won\'t start automatically</string>
 </resources>
