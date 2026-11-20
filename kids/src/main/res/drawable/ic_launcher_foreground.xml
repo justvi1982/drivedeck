@@ -1,0 +1,8 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Two rounded screens, like headrests -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M30,38h20a4,4 0 0 1 4,4v20a4,4 0 0 1 -4,4h-20a4,4 0 0 1 -4,-4v-20a4,4 0 0 1 4,-4z" />
+    <path android:fillColor="#B3FFFFFF" android:pathData="M58,38h20a4,4 0 0 1 4,4v20a4,4 0 0 1 -4,4h-20a4,4 0 0 1 -4,-4v-20a4,4 0 0 1 4,-4z" />
+    <path android:fillColor="#FFF50537" android:pathData="M36,70h36v3h-36z" />
+</vector>

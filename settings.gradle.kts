@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "DriveDeck"
 include(":app")
+include(":kids")

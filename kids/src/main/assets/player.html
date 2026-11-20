@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
+  #p { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<div id="p"></div>
+<script>
+  // Plays one YouTube video and keeps it in step with the front (DriveDeck).
+  var player = null, ready = false, pending = null, lastSeek = 0;
+
+  var tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+
+  function onYouTubeIframeAPIReady() {
+    player = new YT.Player('p', {
+      width: '100%', height: '100%', videoId: '__VIDEO__',
+      playerVars: {
+        autoplay: 1, controls: 0, disablekb: 1, fs: 0, rel: 0, playsinline: 1,
+        iv_load_policy: 3, start: __START__, origin: '__ORIGIN__'
+      },
+      events: {
+        onReady: function () {
+          ready = true;
+          try { player.unMute(); player.setVolume(100); } catch (e) {}
+          Android.onReady();
+          if (pending) { sync(pending[0], pending[1]); pending = null; }
+        },
+        onError: function (e) { Android.onError(e.data); },
+        onStateChange: function (e) { Android.onState(e.data); }
+      }
+    });
+  }
+
+  // pos: where the front is now (ms); playing: whether it's playing.
+  function sync(pos, playing) {
+    if (!ready) { pending = [pos, playing]; return; }
+    var state = player.getPlayerState();   // 1 playing, 2 paused, 3 buffering, 0 ended
+    var now = Date.now();
+    var here = player.getCurrentTime() * 1000;
+    if (Math.abs(here - pos) > 800 && now - lastSeek > 2500) {
+      player.seekTo(pos / 1000, true);
+      lastSeek = now;
+    }
+    if (playing && state !== 1 && state !== 3) player.playVideo();
+    if (!playing && (state === 1 || state === 3)) player.pauseVideo();
+  }
+</script>
+</body>
+</html>

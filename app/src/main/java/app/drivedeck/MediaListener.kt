@@ -55,6 +55,7 @@ class MediaListener : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         instance = this
+        RearLink.init(this)
         rebuildNow()
     }
 

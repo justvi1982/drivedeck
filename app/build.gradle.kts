@@ -18,6 +18,8 @@ android {
         versionName = "1.0.$runNumber"
     }
 
+    sourceSets["main"].java.srcDir("../shared/src")
+
     signingConfigs {
         create("release") {
             if (keystorePath != null) {

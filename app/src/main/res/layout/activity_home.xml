@@ -266,6 +266,17 @@
                                     android:textColor="@color/text2"
                                     android:textSize="13sp" />
                             </LinearLayout>
+
+                            <ImageButton
+                                android:id="@+id/btnRear"
+                                android:layout_width="46dp"
+                                android:layout_height="46dp"
+                                android:layout_marginStart="10dp"
+                                android:background="@drawable/bg_circle"
+                                android:contentDescription="@string/cd_rear"
+                                android:padding="11dp"
+                                android:scaleType="fitCenter"
+                                android:src="@drawable/ic_rear" />
                         </LinearLayout>
 
                         <View

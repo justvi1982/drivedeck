@@ -53,6 +53,7 @@ import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import app.decklink.Link
 import org.osmdroid.config.Configuration as OsmConfig
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -180,6 +181,7 @@ class HomeActivity : Activity() {
         setupMap()
         setupMedia()
         setupApps()
+        RearLink.init(this)
 
         updateClock()
         renderDock()
@@ -371,6 +373,7 @@ class HomeActivity : Activity() {
         findViewById<View>(R.id.btnNext).setOnClickListener { mediaAction(KeyEvent.KEYCODE_MEDIA_NEXT) }
         btnPlay.setOnClickListener { mediaAction(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) }
         findViewById<View>(R.id.mediaInfo).setOnClickListener { openMediaApp() }
+        findViewById<View>(R.id.btnRear).setOnClickListener { showBackScreen() }
     }
 
     private fun setupApps() {
@@ -991,6 +994,8 @@ class HomeActivity : Activity() {
             when (keyCode) {
                 KeyEvent.KEYCODE_MEDIA_PREVIOUS -> tc.skipToPrevious()
                 KeyEvent.KEYCODE_MEDIA_NEXT -> tc.skipToNext()
+                KeyEvent.KEYCODE_MEDIA_PLAY -> tc.play()
+                KeyEvent.KEYCODE_MEDIA_PAUSE -> tc.pause()
                 else -> if (c.playbackState?.state == PlaybackState.STATE_PLAYING) tc.pause() else tc.play()
             }
         } else {
@@ -1020,6 +1025,67 @@ class HomeActivity : Activity() {
         } catch (e:Exception) {
         }
         Apps.launch(this, c.packageName)
+    }
+
+    // ---------------------------------------------------------------- back screen (KidsDeck)
+
+    private fun showBackScreen() {
+        RearLink.init(this)
+        val backs = RearLink.connectedBacks()
+            .map { it.lowercase(Locale.getDefault()).replaceFirstChar { c -> c.titlecase(Locale.getDefault()) } }
+        val status = if (backs.isEmpty()) getString(R.string.rear_missing)
+        else getString(R.string.rear_connected, backs.joinToString())
+        val follow = RearLink.followPkg
+        val now = when {
+            RearLink.ytVideo != null -> getString(R.string.rear_now_youtube)
+            follow != null -> getString(R.string.rear_now_follow, backAppName(follow))
+            else -> null
+        }
+        val targets = listOf(Link.NETFLIX, Link.PRIME, Link.YOUTUBE)
+        val items = mutableListOf(getString(R.string.rear_playpause))
+        targets.forEach { items.add(getString(R.string.rear_open, backAppName(it))) }
+        items.add(getString(R.string.rear_stop))
+        items.add(getString(R.string.rear_youtube_how))
+
+        val header = TextView(this).apply {
+            text = getString(R.string.rear_title) + "\n" + status + (now?.let { "\n" + it } ?: "")
+            setTextColor(getColor(R.color.text))
+            textSize = 16f
+            setPadding(dp(24), dp(20), dp(24), dp(8))
+        }
+        AlertDialog.Builder(this)
+            .setCustomTitle(header)
+            .setItems(items.toTypedArray()) { _, which ->
+                when {
+                    which == 0 -> {
+                        val playing = controller?.playbackState?.state == PlaybackState.STATE_PLAYING
+                        mediaAction(if (playing) KeyEvent.KEYCODE_MEDIA_PAUSE else KeyEvent.KEYCODE_MEDIA_PLAY)
+                        RearLink.playPauseBack(this, !playing)
+                    }
+                    which <= targets.size -> {
+                        val pkg = targets[which - 1]
+                        RearLink.openInBack(this, pkg)
+                        toast(getString(R.string.rear_opened, backAppName(pkg)))
+                    }
+                    which == targets.size + 1 -> {
+                        RearLink.stop(this)
+                        toast(getString(R.string.rear_stopped))
+                    }
+                    else -> AlertDialog.Builder(this)
+                        .setTitle(R.string.rear_youtube_how)
+                        .setMessage(R.string.rear_youtube_help)
+                        .setPositiveButton(R.string.done, null)
+                        .show()
+                }
+            }
+            .show()
+    }
+
+    private fun backAppName(pkg: String): String = when (pkg) {
+        Link.NETFLIX -> "Netflix"
+        Link.PRIME, Link.PRIME_TV -> "Prime Video"
+        Link.YOUTUBE -> "YouTube"
+        else -> Apps.label(this, pkg)
     }
 
     // ---------------------------------------------------------------- settings

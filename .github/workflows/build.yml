@@ -45,7 +45,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
           set -o pipefail
-          gradle :app:assembleRelease 2>&1 | tee build.log
+          gradle :app:assembleRelease :kids:assembleRelease 2>&1 | tee build.log
 
       # If the build breaks, publish the errors where they can be read without logging in.
       - name: Publish build errors
@@ -64,19 +64,23 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release delete build-errors --yes --cleanup-tag || true
 
-      - name: Collect APK
-        run: cp app/build/outputs/apk/release/app-release.apk DriveDeck.apk
+      - name: Collect APKs
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk DriveDeck.apk
+          cp kids/build/outputs/apk/release/kids-release.apk KidsDeck.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: DriveDeck
-          path: DriveDeck.apk
+          path: |
+            DriveDeck.apk
+            KidsDeck.apk
 
       - name: Publish as the "latest" release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest DriveDeck.apk \
+          gh release create latest DriveDeck.apk KidsDeck.apk \
             --title "DriveDeck build ${{ github.run_number }} (${{ env.SIGNED_WITH }})" \
-            --notes "Open this page on the TBox and tap DriveDeck.apk to install or update."
+            --notes "On the TBox: tap DriveDeck.apk. On the back screen: tap KidsDeck.apk."

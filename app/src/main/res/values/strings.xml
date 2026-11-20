@@ -56,4 +56,27 @@
     <string name="autostart_off">Start %1$s when the box starts: off</string>
     <string name="autostart_now_on">%1$s will start when the box starts</string>
     <string name="autostart_now_off">%1$s won\'t start automatically</string>
+
+    <string name="share_label">Play in the back</string>
+    <string name="rear_title">Back screen</string>
+    <string name="rear_connected">Connected: %1$s</string>
+    <string name="rear_missing">No back screen found. Is it on and connected to the TBox hotspot, with KidsDeck as its home screen?</string>
+    <string name="rear_playpause">Play / pause front and back</string>
+    <string name="rear_open">Open %1$s in the back</string>
+    <string name="rear_stop">Stop in the back</string>
+    <string name="rear_youtube_how">YouTube in sync: how?</string>
+    <string name="rear_youtube_help">In the YouTube app, start a video, tap Share and choose "Play in the back". The back screen plays the same video and follows play, pause and skipping.
+
+For Netflix and Prime: choose "Open … in the back" here and pick the same episode on both screens. After that, pausing or playing at the front does the same in the back.
+
+Only while parked, for example when charging.</string>
+    <string name="rear_now_youtube">Now: YouTube in sync</string>
+    <string name="rear_now_follow">Now: %1$s follows play and pause</string>
+    <string name="rear_sent">Playing in the back (%1$s)</string>
+    <string name="rear_sent_searching">Sent to the back. Looking for the back screen…</string>
+    <string name="rear_not_youtube">That\'s not a YouTube video link</string>
+    <string name="rear_new_video">YouTube moved to another video. Share it again to play it in the back.</string>
+    <string name="rear_opened">Opening %1$s in the back</string>
+    <string name="rear_stopped">Stopped in the back</string>
+    <string name="cd_rear">Back screen</string>
 </resources>

@@ -28,8 +28,27 @@ New builds publish to the same link and install as updates.
 - If the home button or swipe doesn't appear: long-press the clock → **Home button and swipe up** → **Status**, and take a photo.
 - **Light and dark mode** in settings: automatic (by sunrise and sunset), always light, or always dark.
 
+## KidsDeck (back screens)
+
+KidsDeck is a calm, always-dark home screen for the kids' screens in the back (Android 9 and up): a big clock, large tiles for YouTube, Netflix and Prime Video, and nothing to get lost in. It also plays along with DriveDeck at the front.
+
+**Install on a back screen**
+
+1. Connect the screen to Wi-Fi (the TBox hotspot works) and open `https://github.com/justvi1982/drivedeck/releases/download/latest/KidsDeck.apk` in its browser.
+2. Open the file and allow installing if asked.
+3. Press Home and choose **KidsDeck**, then **Always**.
+4. Parents: hold the clock for 3 seconds for settings: apps on the home screen, this screen's name (back right / back left), playing along on or off, and **media control**. Switch on **KidsDeck mediabediening** there so the front can pause and play Netflix and Prime in the back.
+
+**Playing along (only while parked, for example when charging)**
+
+- The TBox and the back screen must be on the same network: the back screen joins the TBox hotspot.
+- **YouTube, in sync:** in the YouTube app on the TBox, start a video, tap **Share → Play in the back**. The back screen plays the same video and follows play, pause and skipping. If a video can't play outside YouTube, the back opens it in its YouTube app and follows play and pause only.
+- **Netflix and Prime:** on DriveDeck, tap the small screen button on the now-playing card → **Open Netflix in the back**, pick the same episode on both screens. Playing or pausing at the front then does the same in the back. **Play / pause front and back** does both at once.
+- **Stop in the back** closes the video in the back. The kids can close it with ✕ too.
+- Turn playing along off on a screen (e.g. back left) in its parent settings.
+
 ## Builds
 
-Every push to `main` builds the APK and publishes it at the link above. With the `KEYSTORE_PASSWORD` secret set, builds are signed with the key in `signing/` and install as updates over each other.
+Every push to `main` builds both APKs (DriveDeck and KidsDeck) and publishes them at the links above. With the `KEYSTORE_PASSWORD` secret set, builds are signed with the key in `signing/` and install as updates over each other.
 
 Map data © OpenStreetMap contributors.

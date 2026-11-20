@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">KidsDeck</string>
+    <string name="media_access_label">KidsDeck mediabediening</string>
+    <string name="channel_name">Meekijken met voorin</string>
+    <string name="notif_text">Wacht op DriveDeck voorin</string>
+    <string name="front_connected">VOORIN VERBONDEN</string>
+    <string name="front_missing">NIET VERBONDEN</string>
+    <string name="playing_along">Kijkt mee met voorin</string>
+    <string name="cant_embed">Deze video opent in YouTube</string>
+    <string name="parent_title">Instellingen voor ouders</string>
+    <string name="parent_apps">Apps op het startscherm</string>
+    <string name="parent_name">Naam van dit scherm</string>
+    <string name="parent_media">Mediabediening toestaan</string>
+    <string name="parent_media_msg">Zet in het volgende scherm \"KidsDeck mediabediening\" aan. Dan kan DriveDeck voorin Netflix en Prime hier pauzeren en starten.</string>
+    <string name="parent_launcher">Ander startscherm kiezen</string>
+    <string name="parent_wifi">Wifi</string>
+    <string name="parent_settings">Android-instellingen</string>
+    <string name="parent_all_apps">Alle apps openen…</string>
+    <string name="parent_hint">Houd de klok 3 seconden ingedrukt voor instellingen</string>
+    <string name="open_settings">Openen</string>
+    <string name="cancel">Annuleren</string>
+    <string name="save">Opslaan</string>
+    <string name="no_apps">Houd de klok 3 seconden ingedrukt om apps te kiezen</string>
+    <string name="open_failed">Kan deze app niet openen</string>
+</resources>
