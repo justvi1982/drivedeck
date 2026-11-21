@@ -104,6 +104,7 @@ class HomeActivity : Activity() {
     private lateinit var navTitle: TextView
     private lateinit var navText: TextView
     private lateinit var navSub: TextView
+    private lateinit var btnHotspot: ImageButton
 
     // Apps
     private var apps: List<AppEntry> = emptyList()
@@ -143,6 +144,9 @@ class HomeActivity : Activity() {
 
     private val timeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) = updateClock()
+    }
+    private val hotspotReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) = renderHotspot(Hotspot.stateFrom(intent))
     }
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -192,7 +196,7 @@ class HomeActivity : Activity() {
         renderNav()
         applyOrientation(resources.configuration)
         loadAppsAsync()
-        maybeAutostartTileApp()
+        runBootTasks()
 
         if (!hasLocationPermission()) {
             requestPermissions(
@@ -216,6 +220,7 @@ class HomeActivity : Activity() {
             addAction(Intent.ACTION_PACKAGE_CHANGED)
             addDataScheme("package")
         })
+        registerSafely(hotspotReceiver, IntentFilter(Hotspot.ACTION_STATE_CHANGED))
         updateClock()
         startMedia()
         MediaListener.addListener(alertListener)
@@ -231,6 +236,7 @@ class HomeActivity : Activity() {
         renderDock()
         renderNavLabel()
         renderTile()
+        renderHotspot(Hotspot.isOn(this))
         hideSystemBars()
         HomeGestureService.setHomeVisible(true, currentDisplayId())
         if (DayNight.isNight(prefs) != appliedNight) recreate()
@@ -249,6 +255,7 @@ class HomeActivity : Activity() {
         stopMedia()
         try { unregisterReceiver(timeReceiver) } catch (e:Exception) {}
         try { unregisterReceiver(packageReceiver) } catch (e:Exception) {}
+        try { unregisterReceiver(hotspotReceiver) } catch (e:Exception) {}
         super.onStop()
     }
 
@@ -393,6 +400,13 @@ class HomeActivity : Activity() {
         btnApps.setOnClickListener { openDrawer() }
         btnApps.setOnLongClickListener { showSettings(); true }
         findViewById<View>(R.id.btnCloseDrawer).setOnClickListener { closeDrawer() }
+
+        btnHotspot = findViewById(R.id.btnHotspot)
+        btnHotspot.setOnClickListener {
+            pressBounce(it)
+            Hotspot.set(this, null)
+        }
+        btnHotspot.setOnLongClickListener { showHotspotSettings(); true }
     }
 
     // ---------------------------------------------------------------- layout
@@ -830,21 +844,78 @@ class HomeActivity : Activity() {
 
     /**
      * Once per start-up of the box: open the tile's app (Flitsmeister) so it runs in the
-     * background, then come straight back to the home screen.
+     * background and come straight back, then switch on the Wi-Fi hotspot for the back screens.
      */
-    private fun maybeAutostartTileApp() {
-        if (!prefs.getBoolean(Prefs.KEY_AUTOSTART, true)) return
+    private fun runBootTasks() {
         val sinceBoot = SystemClock.elapsedRealtime()
         if (sinceBoot > 10 * 60 * 1000L) return
         val bootedAt = (System.currentTimeMillis() - sinceBoot) / 60_000L
         if (prefs.getLong(Prefs.KEY_LAST_BOOT, -1L) == bootedAt) return
         prefs.edit().putLong(Prefs.KEY_LAST_BOOT, bootedAt).apply()
-        val pkg = Prefs.tileApp(prefs)?.takeIf { Apps.isInstalled(this, it) } ?: return
+
+        val pkg = if (prefs.getBoolean(Prefs.KEY_AUTOSTART, true)) {
+            Prefs.tileApp(prefs)?.takeIf { Apps.isInstalled(this, it) }
+        } else null
+        if (pkg == null) {
+            hotspotAtBoot(1500L)
+            return
+        }
         handler.postDelayed({
-            if (!Apps.launch(this, pkg)) return@postDelayed
+            if (!Apps.launch(this, pkg)) {
+                hotspotAtBoot(0L)
+                return@postDelayed
+            }
             Diag.log("started $pkg after boot")
-            handler.postDelayed({ comeBackHome() }, AUTOSTART_RETURN_MS)
+            handler.postDelayed({
+                comeBackHome()
+                hotspotAtBoot(2500L)
+            }, AUTOSTART_RETURN_MS)
         }, 1500L)
+    }
+
+    /** Switch the hotspot on after start-up, waiting a little for the home-button service. */
+    private fun hotspotAtBoot(delay: Long, tries: Int = 0) {
+        if (!prefs.getBoolean(Prefs.KEY_HOTSPOT_AT_START, true)) return
+        handler.postDelayed({
+            if (Hotspot.isOn(this) == true) return@postDelayed
+            if (HomeGestureService.instance == null && tries < 10) {
+                hotspotAtBoot(2000L, tries + 1)
+                return@postDelayed
+            }
+            Hotspot.set(this, true, goHomeAfter = true, quiet = true)
+        }, delay)
+    }
+
+    // ---------------------------------------------------------------- Wi-Fi hotspot
+
+    private fun renderHotspot(on: Boolean?) {
+        if (!::btnHotspot.isInitialized) return
+        btnHotspot.imageTintList = android.content.res.ColorStateList.valueOf(
+            getColor(if (on == true) R.color.accent else R.color.text2)
+        )
+        btnHotspot.alpha = if (on == null) 0.7f else 1f
+    }
+
+    private fun showHotspotSettings() {
+        val atStart = prefs.getBoolean(Prefs.KEY_HOTSPOT_AT_START, true)
+        val items = arrayOf(
+            getString(R.string.hotspot_toggle_now),
+            getString(if (atStart) R.string.hotspot_at_start_on else R.string.hotspot_at_start_off),
+            getString(R.string.hotspot_open_settings),
+        )
+        AlertDialog.Builder(this)
+            .setTitle(R.string.hotspot_settings)
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> Hotspot.set(this, null)
+                    1 -> prefs.edit().putBoolean(Prefs.KEY_HOTSPOT_AT_START, !atStart).apply()
+                    2 -> {
+                        toast(getString(R.string.hotspot_tip))
+                        Hotspot.openSettings(this)
+                    }
+                }
+            }
+            .show()
     }
 
     private fun comeBackHome() {
@@ -1122,6 +1193,7 @@ class HomeActivity : Activity() {
             getString(R.string.home_controls),
             getString(R.string.appearance),
             getString(R.string.tile_settings),
+            getString(R.string.hotspot_settings),
             getString(R.string.media_access),
             getString(R.string.switch_launcher),
             getString(R.string.android_settings),
@@ -1134,13 +1206,14 @@ class HomeActivity : Activity() {
                     1 -> showHomeControls()
                     2 -> chooseAppearance()
                     3 -> showTileSettings()
-                    4 -> explainThenOpen(
+                    4 -> showHotspotSettings()
+                    5 -> explainThenOpen(
                         R.string.media_off_title,
                         getString(R.string.listener_label),
                         Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS),
                     )
-                    5 -> if (!safeStart(Intent(Settings.ACTION_HOME_SETTINGS))) safeStart(Intent(Settings.ACTION_SETTINGS))
-                    6 -> safeStart(Intent(Settings.ACTION_SETTINGS))
+                    6 -> if (!safeStart(Intent(Settings.ACTION_HOME_SETTINGS))) safeStart(Intent(Settings.ACTION_SETTINGS))
+                    7 -> safeStart(Intent(Settings.ACTION_SETTINGS))
                 }
             }
             .show()

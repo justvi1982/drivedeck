@@ -26,6 +26,7 @@ New builds publish to the same link and install as updates.
 - The wide tile shows the latest Flitsmeister alert; tap it to open Flitsmeister. Long-press it to use a different app. DriveDeck opens Flitsmeister once when the box starts and comes straight back, so alerts arrive in the background.
 - While Google Maps is navigating, the map shows the next turn, distance and arrival time. The map turns with the car.
 - If the home button or swipe doesn't appear: long-press the clock → **Home button and swipe up** → **Status**, and take a photo.
+- **Wi-Fi hotspot** (for the back screens): DriveDeck switches it on by itself after the box starts. The round hotspot button above the grid button on the left switches it on or off (red = on). Long-press it for options. DriveDeck does this by opening the hotspot page in Settings and tapping the switch, so the home button service must be on. Tip: in the hotspot settings, switch off "Turn off hotspot automatically".
 - **Light and dark mode** in settings: automatic (by sunrise and sunset), always light, or always dark.
 
 ## KidsDeck (back screens)

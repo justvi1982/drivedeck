@@ -24,7 +24,7 @@
     <string name="cd_home">Go to home screen</string>
 
     <string name="gesture_service_label">DriveDeck home button and swipe</string>
-    <string name="gesture_service_desc">Shows a floating home button and lets you swipe up from the bottom of the screen to go home. It hides itself in apps you choose. It doesn\'t read anything on your screen.</string>
+    <string name="gesture_service_desc">Shows a floating home button and lets you swipe up from the bottom of the screen to go home. It hides itself in apps you choose. It only reads the screen in Settings, to switch the Wi-Fi hotspot on or off for you.</string>
     <string name="home_controls">Home button and swipe up</string>
     <string name="home_controls_off_title">Turn on home controls</string>
     <string name="media_off_title">Show what\'s playing</string>
@@ -77,4 +77,18 @@
     <string name="cd_rear">Back screen</string>
     <string name="rear_play_copied">Play copied YouTube link in the back</string>
     <string name="rear_no_copied_link">No YouTube link copied. In YouTube: Share → Copy link, then try again.</string>
+    <string name="hotspot">Wi-Fi hotspot</string>
+    <string name="cd_hotspot">Wi-Fi hotspot on or off</string>
+    <string name="hotspot_on">Hotspot on</string>
+    <string name="hotspot_off">Hotspot off</string>
+    <string name="hotspot_already_on">Hotspot is already on</string>
+    <string name="hotspot_already_off">Hotspot is already off</string>
+    <string name="hotspot_failed">Couldn\'t switch the hotspot by itself. Settings is open: switch it there.</string>
+    <string name="hotspot_need_service">Switch on the DriveDeck home button service (long-press the clock → Home button and swipe up) so DriveDeck can switch the hotspot for you.</string>
+    <string name="hotspot_settings">Wi-Fi hotspot</string>
+    <string name="hotspot_at_start_on">Turn on hotspot when the box starts: on</string>
+    <string name="hotspot_at_start_off">Turn on hotspot when the box starts: off</string>
+    <string name="hotspot_toggle_now">Switch hotspot on or off now</string>
+    <string name="hotspot_open_settings">Open hotspot settings</string>
+    <string name="hotspot_tip">Tip: in the hotspot settings, switch off \"Turn off hotspot automatically\", otherwise Android turns it off when the back screens are off for a while.</string>
 </resources>
