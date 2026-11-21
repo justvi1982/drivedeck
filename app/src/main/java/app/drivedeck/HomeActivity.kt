@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.BroadcastReceiver
+import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -374,6 +375,7 @@ class HomeActivity : Activity() {
         btnPlay.setOnClickListener { mediaAction(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) }
         findViewById<View>(R.id.mediaInfo).setOnClickListener { openMediaApp() }
         findViewById<View>(R.id.btnRear).setOnClickListener { showBackScreen() }
+        findViewById<View>(R.id.btnRear).setOnLongClickListener { playCopiedLinkInBack(); true }
     }
 
     private fun setupApps() {
@@ -1041,11 +1043,31 @@ class HomeActivity : Activity() {
             follow != null -> getString(R.string.rear_now_follow, backAppName(follow))
             else -> null
         }
-        val targets = listOf(Link.NETFLIX, Link.PRIME, Link.YOUTUBE)
-        val items = mutableListOf(getString(R.string.rear_playpause))
-        targets.forEach { items.add(getString(R.string.rear_open, backAppName(it))) }
-        items.add(getString(R.string.rear_stop))
-        items.add(getString(R.string.rear_youtube_how))
+        // Each menu line with what it does, so the order is easy to change.
+        val actions = mutableListOf<Pair<String, () -> Unit>>()
+        actions.add(getString(R.string.rear_play_copied) to { playCopiedLinkInBack() })
+        actions.add(getString(R.string.rear_playpause) to {
+            val playing = controller?.playbackState?.state == PlaybackState.STATE_PLAYING
+            mediaAction(if (playing) KeyEvent.KEYCODE_MEDIA_PAUSE else KeyEvent.KEYCODE_MEDIA_PLAY)
+            RearLink.playPauseBack(this, !playing)
+        })
+        listOf(Link.NETFLIX, Link.PRIME, Link.YOUTUBE).forEach { pkg ->
+            actions.add(getString(R.string.rear_open, backAppName(pkg)) to {
+                RearLink.openInBack(this, pkg)
+                toast(getString(R.string.rear_opened, backAppName(pkg)))
+            })
+        }
+        actions.add(getString(R.string.rear_stop) to {
+            RearLink.stop(this)
+            toast(getString(R.string.rear_stopped))
+        })
+        actions.add(getString(R.string.rear_youtube_how) to {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.rear_youtube_how)
+                .setMessage(R.string.rear_youtube_help)
+                .setPositiveButton(R.string.done, null)
+                .show()
+        })
 
         val header = TextView(this).apply {
             text = getString(R.string.rear_title) + "\n" + status + (now?.let { "\n" + it } ?: "")
@@ -1055,30 +1077,34 @@ class HomeActivity : Activity() {
         }
         AlertDialog.Builder(this)
             .setCustomTitle(header)
-            .setItems(items.toTypedArray()) { _, which ->
-                when {
-                    which == 0 -> {
-                        val playing = controller?.playbackState?.state == PlaybackState.STATE_PLAYING
-                        mediaAction(if (playing) KeyEvent.KEYCODE_MEDIA_PAUSE else KeyEvent.KEYCODE_MEDIA_PLAY)
-                        RearLink.playPauseBack(this, !playing)
-                    }
-                    which <= targets.size -> {
-                        val pkg = targets[which - 1]
-                        RearLink.openInBack(this, pkg)
-                        toast(getString(R.string.rear_opened, backAppName(pkg)))
-                    }
-                    which == targets.size + 1 -> {
-                        RearLink.stop(this)
-                        toast(getString(R.string.rear_stopped))
-                    }
-                    else -> AlertDialog.Builder(this)
-                        .setTitle(R.string.rear_youtube_how)
-                        .setMessage(R.string.rear_youtube_help)
-                        .setPositiveButton(R.string.done, null)
-                        .show()
-                }
-            }
+            .setItems(actions.map { it.first }.toTypedArray()) { _, which -> actions[which].second() }
             .show()
+    }
+
+    /** YouTube → Share → Copy link, then this: the back screen plays that video in sync. */
+    private fun playCopiedLinkInBack() {
+        val text = try {
+            val cm = getSystemService(ClipboardManager::class.java)
+            val clip = cm?.primaryClip
+            if (clip != null && clip.itemCount > 0) clip.getItemAt(0).coerceToText(this)?.toString() else null
+        } catch (e: Exception) {
+            null
+        }
+        val id = Link.youtubeId(text)
+        if (id == null) {
+            toast(getString(R.string.rear_no_copied_link))
+            return
+        }
+        RearLink.startYouTube(this, id, Link.youtubeStartMs(text))
+        val backs = RearLink.connectedBacks()
+        toast(
+            if (backs.isEmpty()) getString(R.string.rear_sent_searching)
+            else getString(R.string.rear_sent, backs.joinToString {
+                it.lowercase(Locale.getDefault()).replaceFirstChar { c -> c.titlecase(Locale.getDefault()) }
+            })
+        )
+        // Back to YouTube, which keeps playing at the front.
+        Apps.launch(this, Link.YOUTUBE)
     }
 
     private fun backAppName(pkg: String): String = when (pkg) {

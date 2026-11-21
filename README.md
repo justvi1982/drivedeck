@@ -43,7 +43,7 @@ KidsDeck is a calm, always-dark home screen for the kids' screens in the back (A
 **Playing along (only while parked, for example when charging)**
 
 - The TBox and the back screen must be on the same network: the back screen joins the TBox hotspot.
-- **YouTube, in sync:** in the YouTube app on the TBox, start a video, tap **Share → Play in the back**. The back screen plays the same video and follows play, pause and skipping. If a video can't play outside YouTube, the back opens it in its YouTube app and follows play and pause only.
+- **YouTube, in sync:** in the YouTube app on the TBox, start a video and tap **Share → Copy link**. Then on DriveDeck, long-press the small screen button on the now-playing card (or tap it → **Play copied YouTube link in the back**). Sharing also works: **Share → More → Play in the back**. The back screen plays the same video and follows play, pause and skipping. If a video can't play outside YouTube, the back opens it in its YouTube app and follows play and pause only.
 - **Netflix and Prime:** on DriveDeck, tap the small screen button on the now-playing card → **Open Netflix in the back**, pick the same episode on both screens. Playing or pausing at the front then does the same in the back. **Play / pause front and back** does both at once.
 - **Stop in the back** closes the video in the back. The kids can close it with ✕ too.
 - Turn playing along off on a screen (e.g. back left) in its parent settings.

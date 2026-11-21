@@ -65,11 +65,7 @@
     <string name="rear_open">Open %1$s in the back</string>
     <string name="rear_stop">Stop in the back</string>
     <string name="rear_youtube_how">YouTube in sync: how?</string>
-    <string name="rear_youtube_help">In the YouTube app, start a video, tap Share and choose "Play in the back". The back screen plays the same video and follows play, pause and skipping.
-
-For Netflix and Prime: choose "Open … in the back" here and pick the same episode on both screens. After that, pausing or playing at the front does the same in the back.
-
-Only while parked, for example when charging.</string>
+    <string name="rear_youtube_help">Quickest: in the YouTube app, tap Share → Copy link. Then on DriveDeck, long-press the small screen button on the now-playing card, or tap it and choose \"Play copied YouTube link in the back\". The back screen plays the same video and follows play, pause and skipping.\n\nOr: in YouTube, Share → More → \"Play in the back\".\n\nFor Netflix and Prime: choose \"Open … in the back\" here and pick the same episode on both screens. After that, pausing or playing at the front does the same in the back.\n\nOnly while parked, for example when charging.</string>
     <string name="rear_now_youtube">Now: YouTube in sync</string>
     <string name="rear_now_follow">Now: %1$s follows play and pause</string>
     <string name="rear_sent">Playing in the back (%1$s)</string>
@@ -79,4 +75,6 @@ Only while parked, for example when charging.</string>
     <string name="rear_opened">Opening %1$s in the back</string>
     <string name="rear_stopped">Stopped in the back</string>
     <string name="cd_rear">Back screen</string>
+    <string name="rear_play_copied">Play copied YouTube link in the back</string>
+    <string name="rear_no_copied_link">No YouTube link copied. In YouTube: Share → Copy link, then try again.</string>
 </resources>
