@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.ColorStateList
+import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -15,7 +16,11 @@ import android.provider.Settings
 import android.text.format.DateFormat
 import android.view.Gravity
 import android.view.MotionEvent
+import android.text.TextUtils
 import android.view.View
+import android.view.ViewGroup
+import android.widget.BaseAdapter
+import android.widget.GridView
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -41,6 +46,10 @@ class HomeActivity : Activity() {
     private lateinit var linkText: TextView
     private lateinit var screenName: TextView
     private var renderedApps: List<String> = emptyList()
+    private lateinit var drawer: View
+    private lateinit var grid: GridView
+    private var allApps: List<Pair<AppEntry, Drawable?>> = emptyList()
+    private val adapter = AllAppsAdapter()
 
     private val nl = Locale("nl", "NL")
     private val linkListener: () -> Unit = { handler.post { renderLink() } }
@@ -50,7 +59,10 @@ class HomeActivity : Activity() {
         override fun onReceive(context: Context, intent: Intent) = updateClock()
     }
     private val packageReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) = renderTiles(force = true)
+        override fun onReceive(context: Context, intent: Intent) {
+            renderTiles(force = true)
+            loadAllApps()
+        }
     }
 
     // ---------------------------------------------------------------- lifecycle
@@ -65,6 +77,7 @@ class HomeActivity : Activity() {
         linkText = findViewById(R.id.linkText)
         screenName = findViewById(R.id.screenName)
         setupParentHold(findViewById(R.id.clockBox))
+        setupDrawer()
         LinkService.start(this)
     }
 
@@ -99,9 +112,16 @@ class HomeActivity : Activity() {
         super.onStop()
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // Pressing Home while on the home screen closes the app list.
+        closeDrawer()
+    }
+
     @Deprecated("A launcher handles Back itself")
     override fun onBackPressed() {
-        // Back never leaves the home screen.
+        // Back closes the app list, but never leaves the home screen.
+        if (drawer.visibility == View.VISIBLE) closeDrawer()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -207,6 +227,95 @@ class HomeActivity : Activity() {
             }.start()
         }
         return tile
+    }
+
+    // ---------------------------------------------------------------- all apps
+
+    private fun setupDrawer() {
+        drawer = findViewById(R.id.drawer)
+        grid = findViewById(R.id.grid)
+        grid.adapter = adapter
+        grid.setOnItemClickListener { _, _, position, _ ->
+            val pkg = allApps[position].first.packageName
+            if (!Apps.launch(this, pkg)) toast(getString(R.string.open_failed))
+            closeDrawer()
+        }
+        grid.setOnItemLongClickListener { _, _, position, _ ->
+            toggleOnHome(allApps[position].first.packageName)
+            true
+        }
+        findViewById<View>(R.id.btnApps).setOnClickListener { openDrawer() }
+        findViewById<View>(R.id.btnCloseDrawer).setOnClickListener { closeDrawer() }
+        loadAllApps()
+    }
+
+    private fun openDrawer() {
+        if (allApps.isEmpty()) loadAllApps()
+        grid.setSelection(0)
+        drawer.alpha = 0f
+        drawer.visibility = View.VISIBLE
+        drawer.animate().alpha(1f).setDuration(160).start()
+    }
+
+    private fun closeDrawer() {
+        if (drawer.visibility != View.VISIBLE) return
+        drawer.animate().alpha(0f).setDuration(140).withEndAction { drawer.visibility = View.GONE }.start()
+    }
+
+    private fun loadAllApps() {
+        val size = dp(64)
+        Thread {
+            val list = Apps.load(this).map { it to Apps.icon(this, it.packageName, size) }
+            handler.post {
+                allApps = list
+                adapter.notifyDataSetChanged()
+            }
+        }.start()
+    }
+
+    private fun toggleOnHome(pkg: String) {
+        val list = Prefs.apps(this).toMutableList()
+        when {
+            pkg in list -> { list.remove(pkg); toast(getString(R.string.removed_home)) }
+            list.size >= 8 -> { toast(getString(R.string.home_full)); return }
+            else -> { list.add(pkg); toast(getString(R.string.added_home)) }
+        }
+        Prefs.setApps(this, list)
+        renderTiles(force = true)
+    }
+
+    private inner class AllAppsAdapter : BaseAdapter() {
+        override fun getCount(): Int = allApps.size
+        override fun getItem(position: Int): Any = allApps[position]
+        override fun getItemId(position: Int): Long = position.toLong()
+
+        override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
+            val cell = (convertView as? LinearLayout) ?: buildCell()
+            val (app, icon) = allApps[position]
+            (cell.getChildAt(0) as ImageView).setImageDrawable(icon)
+            (cell.getChildAt(1) as TextView).text = app.label
+            return cell
+        }
+
+        private fun buildCell(): LinearLayout {
+            val cell = LinearLayout(this@HomeActivity)
+            cell.orientation = LinearLayout.VERTICAL
+            cell.gravity = Gravity.CENTER_HORIZONTAL
+            cell.setPadding(0, dp(6), 0, dp(6))
+            cell.addView(ImageView(this@HomeActivity), LinearLayout.LayoutParams(dp(64), dp(64)))
+            val label = TextView(this@HomeActivity)
+            label.setTextColor(getColor(R.color.text))
+            label.textSize = 14f
+            label.maxLines = 1
+            label.ellipsize = TextUtils.TruncateAt.END
+            label.gravity = Gravity.CENTER
+            cell.addView(
+                label,
+                LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                    .apply { topMargin = dp(8) },
+            )
+            return cell
+        }
     }
 
     // ---------------------------------------------------------------- parent menu

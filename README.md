@@ -37,7 +37,8 @@ KidsDeck is a calm, always-dark home screen for the kids' screens in the back (A
 1. Connect the screen to Wi-Fi (the TBox hotspot works) and open `https://github.com/justvi1982/drivedeck/releases/download/latest/KidsDeck.apk` in its browser.
 2. Open the file and allow installing if asked.
 3. Press Home and choose **KidsDeck**, then **Always**.
-4. Parents: hold the clock for 3 seconds for settings: apps on the home screen, this screen's name (back right / back left), playing along on or off, and **media control**. Switch on **KidsDeck mediabediening** there so the front can pause and play Netflix and Prime in the back.
+4. The grid button at the top opens **all apps** (scroll through them like on the TBox). Long-press an app there to put it on the home screen or take it off.
+5. Parents: hold the clock for 3 seconds for settings: apps on the home screen, this screen's name (back right / back left), playing along on or off, and **media control**. Switch on **KidsDeck mediabediening** there so the front can pause and play Netflix and Prime in the back.
 
 **Playing along (only while parked, for example when charging)**
 

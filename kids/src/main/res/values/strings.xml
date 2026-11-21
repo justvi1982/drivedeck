@@ -23,4 +23,10 @@
     <string name="save">Opslaan</string>
     <string name="no_apps">Houd de klok 3 seconden ingedrukt om apps te kiezen</string>
     <string name="open_failed">Kan deze app niet openen</string>
+    <string name="all_apps">Alle apps</string>
+    <string name="close">Sluiten</string>
+    <string name="drawer_hint">Lang indrukken: op het startscherm zetten of weghalen</string>
+    <string name="added_home">Op het startscherm gezet</string>
+    <string name="removed_home">Van het startscherm gehaald</string>
+    <string name="home_full">Er passen 8 apps op het startscherm</string>
 </resources>
