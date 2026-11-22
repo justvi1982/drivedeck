@@ -11,7 +11,9 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.Display
+import android.content.Intent
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
@@ -127,6 +129,22 @@ class HomeGestureService : AccessibilityService() {
         performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
     }
 
+    /** All open apps: Android's own app switcher, or DriveDeck's if that's chosen or missing. */
+    fun openRecents() {
+        Diag.log("opening app switcher")
+        val own = prefs.getBoolean(Prefs.KEY_OWN_SWITCHER, false)
+        if (own || !performGlobalAction(AccessibilityService.GLOBAL_ACTION_RECENTS)) {
+            try {
+                startActivity(
+                    Intent(this, HomeActivity::class.java)
+                        .putExtra(HomeActivity.EXTRA_SWITCHER, true)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                )
+            } catch (e: Exception) {
+            }
+        }
+    }
+
     /** One line per display, for the status screen. */
     fun statusLines(): List<String> {
         val dm = displayManager ?: return listOf("No display service")
@@ -229,9 +247,19 @@ class HomeGestureService : AccessibilityService() {
             var startX = 0
             var startY = 0
             var dragging = false
+            var longPressed = false
+            val buttonLongPress = Runnable {
+                if (!dragging) {
+                    longPressed = true
+                    button.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    openRecents()
+                }
+            }
             button.setOnTouchListener { v, e ->
                 when (e.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
+                        longPressed = false
+                        handler.postDelayed(buttonLongPress, 550)
                         downX = e.rawX; downY = e.rawY
                         startX = buttonParams.x; startY = buttonParams.y
                         dragging = false
@@ -243,7 +271,10 @@ class HomeGestureService : AccessibilityService() {
                     MotionEvent.ACTION_MOVE -> {
                         val dx = e.rawX - downX
                         val dy = e.rawY - downY
-                        if (!dragging && (abs(dx) > slop || abs(dy) > slop)) dragging = true
+                        if (!dragging && (abs(dx) > slop || abs(dy) > slop)) {
+                            dragging = true
+                            handler.removeCallbacks(buttonLongPress)
+                        }
                         if (dragging) {
                             buttonParams.x = (startX + dx).roundToInt()
                             buttonParams.y = (startY + dy).roundToInt().coerceIn(0, maxOf(0, height() - size))
@@ -251,8 +282,11 @@ class HomeGestureService : AccessibilityService() {
                         }
                     }
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        handler.removeCallbacks(buttonLongPress)
                         v.scaleX = 1f; v.scaleY = 1f
-                        if (dragging) {
+                        if (longPressed) {
+                            // Already opened the app switcher.
+                        } else if (dragging) {
                             buttonParams.x = snapX(buttonParams.x)
                             update(v, buttonParams)
                             prefs.edit()
@@ -277,26 +311,60 @@ class HomeGestureService : AccessibilityService() {
             barParams = overlayParams(barWidth(), dp(24))
             barParams.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
             val trigger = dp(30)
+            val barSlop = ViewConfiguration.get(ctx).scaledTouchSlop
             var barDownY = 0f
+            var lastY = 0f
+            var currentUp = 0f
+            var switcherArmed = false
+            // Like an iPhone: swipe up and pause = all open apps; a quick swipe = home.
+            val armSwitcher = Runnable {
+                if (currentUp > trigger) {
+                    switcherArmed = true
+                    bar.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    pill.animate().scaleX(1.6f).setDuration(120).start()
+                }
+            }
             bar.setOnTouchListener { v, e ->
                 when (e.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
                         barDownY = e.rawY
+                        lastY = e.rawY
+                        currentUp = 0f
+                        switcherArmed = false
                         handler.removeCallbacks(fadePill)
                         pill.animate().cancel()
                         pill.alpha = 1f
+                        pill.scaleX = 1f
                     }
                     MotionEvent.ACTION_MOVE -> {
                         val up = (barDownY - e.rawY).coerceAtLeast(0f)
+                        currentUp = up
                         pill.translationY = -minOf(up * 0.35f, dp(14).toFloat())
+                        if (abs(e.rawY - lastY) > barSlop) {
+                            // Still moving: wait for a pause.
+                            lastY = e.rawY
+                            handler.removeCallbacks(armSwitcher)
+                            if (!switcherArmed) handler.postDelayed(armSwitcher, 300)
+                        }
                     }
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        handler.removeCallbacks(armSwitcher)
                         val up = barDownY - e.rawY
-                        pill.animate().translationY(0f).setDuration(150).start()
-                        if (e.actionMasked == MotionEvent.ACTION_UP && up > trigger) {
-                            v.performClick()
-                            goHome()
+                        pill.animate().translationY(0f).scaleX(1f).setDuration(150).start()
+                        if (e.actionMasked == MotionEvent.ACTION_UP) {
+                            val longSwipe = up > height() * 0.4f
+                            when {
+                                switcherArmed && up > trigger || longSwipe -> {
+                                    v.performClick()
+                                    openRecents()
+                                }
+                                up > trigger -> {
+                                    v.performClick()
+                                    goHome()
+                                }
+                            }
                         }
+                        switcherArmed = false
                         handler.postDelayed(fadePill, 3000)
                     }
                 }

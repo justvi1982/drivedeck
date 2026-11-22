@@ -25,6 +25,7 @@ object Prefs {
     const val KEY_LAST_BOOT = "last_boot"
     const val KEY_HOTSPOT_AT_START = "hotspot_at_start"
     const val KEY_PHONE = "phone_app"
+    const val KEY_OWN_SWITCHER = "own_switcher"
 
     const val DEFAULT_TILE_APP = "nl.flitsmeister"
     const val MAX_PINS = 2

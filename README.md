@@ -21,7 +21,7 @@ New builds publish to the same link and install as updates.
 - Tap the map to open navigation. Long-press it to pick a different navigation app.
 - The left rail shows up to 2 pinned apps (Phone by default), then your most recent apps. Long-press an app (in the rail or in all apps) to pin or unpin it.
 - Long-press the clock or the grid button for settings, including switching back to the original Carlinkit home screen.
-- In any app, tap the floating home button or swipe up from the middle of the bottom edge to go home. Drag the button to either side; it fades when you're not using it.
+- In any app, tap the floating home button or swipe up from the middle of the bottom edge to go home. **Swipe up and hold** (or swipe up far) to see all open apps and switch between them; long-pressing the floating button does the same. If that shows nothing on your box: long-press the clock → Home button and swipe up → switch on **Use DriveDeck's app switcher**. Drag the button to either side; it fades when you're not using it.
 - Under **Home button and swipe up → Hide in apps…**, pick apps (like a video player) where neither should appear.
 - The wide tile shows the latest Flitsmeister alert; tap it to open Flitsmeister. Long-press it to use a different app. DriveDeck opens Flitsmeister once when the box starts and comes straight back, so alerts arrive in the background.
 - While Google Maps is navigating, the map shows the next turn, distance and arrival time. The map turns with the car.

@@ -33,7 +33,7 @@
     <string name="cancel">Cancel</string>
     <string name="done">Done</string>
     <string name="opt_home_button">Floating home button</string>
-    <string name="opt_swipe_home">Swipe up from the bottom</string>
+    <string name="opt_swipe_home">Swipe up from the bottom (swipe and hold: open apps)</string>
     <string name="hide_in_apps">Hide in apps…</string>
     <string name="hide_in_title">Hide home controls in</string>
     <string name="choose_tile">Choose app for the small tile</string>
@@ -116,4 +116,7 @@
     <string name="panel_front_player">▶  Copied YouTube link in the front player (in sync with the car)</string>
     <string name="front_delay">Sound delay</string>
     <string name="front_cant_embed">This video can\'t play in DriveDeck\'s player. Open it in YouTube instead.</string>
+    <string name="switcher_title">Open apps</string>
+    <string name="switcher_empty">No recent apps yet</string>
+    <string name="opt_own_switcher">Use DriveDeck\'s app switcher (if swiping up and holding shows nothing)</string>
 </resources>

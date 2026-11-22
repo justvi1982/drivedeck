@@ -73,6 +73,7 @@ class HomeActivity : Activity() {
     companion object {
         private const val REQ_LOCATION = 1
         private const val AUTOSTART_RETURN_MS = 6000L
+        const val EXTRA_SWITCHER = "switcher"
     }
 
     private lateinit var prefs: SharedPreferences
@@ -197,6 +198,7 @@ class HomeActivity : Activity() {
         applyOrientation(resources.configuration)
         loadAppsAsync()
         runBootTasks()
+        if (intent?.getBooleanExtra(EXTRA_SWITCHER, false) == true) handler.post { showSwitcher() }
 
         if (!hasLocationPermission()) {
             requestPermissions(
@@ -263,6 +265,68 @@ class HomeActivity : Activity() {
         super.onNewIntent(intent)
         // Pressing Home while already on the home screen closes the drawer.
         closeDrawer()
+        if (intent.getBooleanExtra(EXTRA_SWITCHER, false)) handler.post { showSwitcher() }
+    }
+
+    // ---------------------------------------------------------------- app switcher
+
+    private var switcher: AlertDialog? = null
+
+    /** DriveDeck's own app switcher: the most recent apps as big tiles, newest first. */
+    private fun showSwitcher() {
+        if (!Apps.hasUsageAccess(this)) {
+            askUsageAccess()
+            return
+        }
+        switcher?.dismiss()
+        val list = Apps.recent(this, emptySet(), 12)
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dp(18), dp(18), dp(18), dp(18))
+        }
+        list.forEach { pkg ->
+            val cell = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                setBackgroundResource(R.drawable.bg_card)
+                setPadding(dp(14), dp(16), dp(14), dp(14))
+                isClickable = true
+                foreground = getDrawable(android.R.drawable.list_selector_background)
+            }
+            cell.addView(ImageView(this).apply { setImageDrawable(Apps.iconFor(this@HomeActivity, pkg, dp(76))) },
+                LinearLayout.LayoutParams(dp(76), dp(76)))
+            cell.addView(TextView(this).apply {
+                text = Apps.label(this@HomeActivity, pkg)
+                setTextColor(getColor(R.color.text))
+                textSize = 14f
+                maxLines = 1
+                ellipsize = TextUtils.TruncateAt.END
+                gravity = Gravity.CENTER
+            }, LinearLayout.LayoutParams(dp(110), ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) })
+            cell.setOnClickListener {
+                switcher?.dismiss()
+                if (!Apps.launch(this, pkg)) toast(getString(R.string.open_failed))
+            }
+            row.addView(cell, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                marginEnd = dp(12)
+            })
+        }
+        if (list.isEmpty()) {
+            row.addView(TextView(this).apply {
+                setText(R.string.switcher_empty)
+                setTextColor(getColor(R.color.text2))
+                textSize = 16f
+            })
+        }
+        val scroll = android.widget.HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            addView(row)
+        }
+        switcher = AlertDialog.Builder(this)
+            .setTitle(R.string.switcher_title)
+            .setView(scroll)
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     @Deprecated("A launcher handles Back itself")
@@ -1183,8 +1247,8 @@ class HomeActivity : Activity() {
             )
             return
         }
-        val keys = arrayOf(Prefs.KEY_HOME_BUTTON, Prefs.KEY_SWIPE_HOME, Prefs.KEY_SHOW_ON_HOME)
-        val defaults = booleanArrayOf(true, true, false)
+        val keys = arrayOf(Prefs.KEY_HOME_BUTTON, Prefs.KEY_SWIPE_HOME, Prefs.KEY_SHOW_ON_HOME, Prefs.KEY_OWN_SWITCHER)
+        val defaults = booleanArrayOf(true, true, false, false)
         val checked = BooleanArray(keys.size) { prefs.getBoolean(keys[it], defaults[it]) }
         AlertDialog.Builder(this)
             .setTitle(R.string.home_controls)
@@ -1193,6 +1257,7 @@ class HomeActivity : Activity() {
                     getString(R.string.opt_home_button),
                     getString(R.string.opt_swipe_home),
                     getString(R.string.opt_show_on_home),
+                    getString(R.string.opt_own_switcher),
                 ),
                 checked,
             ) { _, which, isChecked ->
