@@ -26,12 +26,13 @@ New builds publish to the same link and install as updates.
 - The wide tile shows the latest Flitsmeister alert; tap it to open Flitsmeister. Long-press it to use a different app. DriveDeck opens Flitsmeister once when the box starts and comes straight back, so alerts arrive in the background.
 - While Google Maps is navigating, the map shows the next turn, distance and arrival time. The map turns with the car.
 - If the home button or swipe doesn't appear: long-press the clock → **Home button and swipe up** → **Status**, and take a photo.
-- **Wi-Fi hotspot** (for the back screens): DriveDeck switches it on by itself after the box starts. The round hotspot button above the grid button on the left switches it on or off (red = on). Long-press it for options. DriveDeck does this by opening the hotspot page in Settings and tapping the switch, so the home button service must be on. Tip: in the hotspot settings, switch off "Turn off hotspot automatically".
+- **Phone:** the Bluetooth phone app gets the green phone icon and is pinned by default. To pick another: long-press the clock → **Choose phone app**.
+- **Wi-Fi hotspot** (for the back screens): The round hotspot button above the grid button on the left switches it on or off (red = on). Long-press it for options, including switching it on automatically when the box starts (off by default). DriveDeck does this by opening the hotspot page in Settings and tapping the switch, so the home button service must be on. Tip: in the hotspot settings, switch off "Turn off hotspot automatically".
 - **Light and dark mode** in settings: automatic (by sunrise and sunset), always light, or always dark.
 
 ## KidsDeck (back screens)
 
-KidsDeck is a calm, always-dark home screen for the kids' screens in the back (Android 9 and up): a big clock, large tiles for YouTube, Netflix and Prime Video, and nothing to get lost in. It also plays along with DriveDeck at the front.
+KidsDeck is a calm, always-dark home screen with a factory-style dark grille background for the kids' screens in the back (Android 9 and up): a big clock, large tiles for YouTube, Netflix and Prime Video, and nothing to get lost in. It also plays along with DriveDeck at the front.
 
 **Install on a back screen**
 
@@ -41,13 +42,21 @@ KidsDeck is a calm, always-dark home screen for the kids' screens in the back (A
 4. The grid button at the top opens **all apps** (scroll through them like on the TBox). Long-press an app there to put it on the home screen or take it off.
 5. Parents: hold the clock for 3 seconds for settings: apps on the home screen, this screen's name (back right / back left), playing along on or off, and **media control**. Switch on **KidsDeck mediabediening** there so the front can pause and play Netflix and Prime in the back.
 
-**Playing along (only while parked, for example when charging)**
+**Controlling the back from the front (only while parked, for example when charging)**
 
-- The TBox and the back screen must be on the same network: the back screen joins the TBox hotspot.
-- **YouTube, in sync:** in the YouTube app on the TBox, start a video and tap **Share → Copy link**. Then on DriveDeck, long-press the small screen button on the now-playing card (or tap it → **Play copied YouTube link in the back**). Sharing also works: **Share → More → Play in the back**. The back screen plays the same video and follows play, pause and skipping. If a video can't play outside YouTube, the back opens it in its YouTube app and follows play and pause only.
-- **Netflix and Prime:** on DriveDeck, tap the small screen button on the now-playing card → **Open Netflix in the back**, pick the same episode on both screens. Playing or pausing at the front then does the same in the back. **Play / pause front and back** does both at once.
-- **Stop in the back** closes the video in the back. The kids can close it with ✕ too.
-- Turn playing along off on a screen (e.g. back left) in its parent settings.
+The TBox and the back screens must be on the same network: the back screens join the TBox hotspot. Give each back screen its own name in its parent settings (back right / back left).
+
+On DriveDeck, tap the small screen button on the now-playing card. One panel has everything:
+
+- **Screen:** right, left or both.
+- **Mode:**
+  - **Together:** the back plays the same YouTube video as the YouTube app at the front and follows play, pause and skipping. **Sound delay** makes up for the car's Bluetooth sound (press + if the back is ahead of the sound). Netflix and Prime in the back follow the front's play and pause.
+  - **Back only:** the back plays on its own, so the front is free for Spotify and the like.
+- **Play, pause, stop, volume and mute** for the chosen screen(s).
+- **Play copied link:** in YouTube, Netflix or Prime, tap Share → Copy link, then this. YouTube videos play right away; Netflix and Prime open the title (and DriveDeck presses play a few seconds later). Long-pressing the screen button does the same without opening the panel. Share → More → **Play in the back** works too.
+- **Open Netflix / Prime Video / YouTube** in the back.
+
+If a YouTube video can't play outside YouTube, the back opens it in its YouTube app instead. The kids can close a video with ✕. Switch control from the front off on a screen in its parent settings.
 
 ## Builds
 

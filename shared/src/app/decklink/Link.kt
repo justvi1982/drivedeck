@@ -15,13 +15,18 @@ import java.net.NetworkInterface
  * UDP packets on [PORT]. Each side broadcasts a "here" message every few seconds so the
  * other can find it, then talks to it directly.
  *
- * Messages (field "t"):
- *  - here    {role, name}                     either side: "I'm here"
- *  - yt      {v: videoId, p: positionMs, s: 1 playing / 0 paused}   front → back, about once a second
- *  - open    {pkg}                            front → back: open this app (Netflix, Prime…)
+ * Messages (field "t"). Commands from the front carry "to": the back screens they are
+ * for (a JSON array of screen names, or "*" for all).
+ *  - here    {role, name, …status}            either side: "I'm here". The back adds
+ *            vol (0-100), muted, what ("yt-sync", "yt-solo", app package or ""), playing
+ *  - yt      {v, p: positionMs, s: 1/0}       front → back, about once a second: play along
+ *  - play    {v, p: startMs}                  front → back: play this YouTube video on its own
+ *  - url     {url, pkg}                       front → back: open a link (Netflix, Prime…) in an app
+ *  - open    {pkg}                            front → back: open this app
  *  - ps      {a: "play" | "pause"}            front → back: play or pause what's playing
- *  - stop    {}                               front → back: stop playing along
- */
+ *  - vol     {v: 0-100} or {mute: true/false} front → back: volume
+ *  - stop    {}                               front → back: stop playing
+  */
 object Link {
     const val PORT = 47811
     const val ROLE_FRONT = "front"
@@ -40,6 +45,36 @@ object Link {
     }
 
     fun msg(type: String, role: String): JSONObject = JSONObject().put("t", type).put("role", role)
+
+    /** Whether a command is meant for the back screen called [name]. */
+    fun isFor(msg: JSONObject, name: String): Boolean {
+        val to = msg.opt("to") ?: return true
+        if (to == "*") return true
+        val arr = to as? org.json.JSONArray ?: return true
+        for (i in 0 until arr.length()) if (arr.optString(i).equals(name, ignoreCase = true)) return true
+        return false
+    }
+
+    /** The first web link in a piece of shared text. */
+    fun firstUrl(text: String?): String? =
+        text?.let { Regex("""https?://\S+""").find(it)?.value?.trimEnd('.', ',', ')', '"', '\'') }
+
+    /** Which app should open a link: Netflix, Prime Video or YouTube, or null. */
+    fun appForUrl(url: String): String? {
+        val u = url.lowercase()
+        return when {
+            u.contains("netflix.com") -> NETFLIX
+            u.contains("primevideo.com") || u.contains("/gp/video") || u.contains("amazon.") && u.contains("video") -> PRIME
+            youtubeId(url) != null -> YOUTUBE
+            else -> null
+        }
+    }
+
+    /** A Netflix title link turned into a "watch" link, so it starts playing. */
+    fun netflixWatchUrl(url: String): String {
+        val id = Regex("""netflix\.com/(?:[a-z]{2}(?:-[a-z]{2})?/)?(?:title|watch)/(\d+)""").find(url)?.groupValues?.get(1)
+        return if (id != null) "https://www.netflix.com/watch/$id" else url
+    }
 
     /** Broadcast addresses of every active IPv4 network (e.g. 192.168.43.255 on the hotspot). */
     fun broadcastAddresses(): List<InetAddress> {

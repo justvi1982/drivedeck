@@ -382,7 +382,10 @@ class HomeActivity : Activity() {
         btnPlay.setOnClickListener { mediaAction(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) }
         findViewById<View>(R.id.mediaInfo).setOnClickListener { openMediaApp() }
         findViewById<View>(R.id.btnRear).setOnClickListener { showBackScreen() }
-        findViewById<View>(R.id.btnRear).setOnLongClickListener { playCopiedLinkInBack(); true }
+        findViewById<View>(R.id.btnRear).setOnLongClickListener {
+            BackActions.sendLink(this, BackActions.clipboardText(this), backToYouTube = true)
+            true
+        }
     }
 
     private fun setupApps() {
@@ -875,7 +878,7 @@ class HomeActivity : Activity() {
 
     /** Switch the hotspot on after start-up, waiting a little for the home-button service. */
     private fun hotspotAtBoot(delay: Long, tries: Int = 0) {
-        if (!prefs.getBoolean(Prefs.KEY_HOTSPOT_AT_START, true)) return
+        if (!prefs.getBoolean(Prefs.KEY_HOTSPOT_AT_START, false)) return
         handler.postDelayed({
             if (Hotspot.isOn(this) == true) return@postDelayed
             if (HomeGestureService.instance == null && tries < 10) {
@@ -897,7 +900,7 @@ class HomeActivity : Activity() {
     }
 
     private fun showHotspotSettings() {
-        val atStart = prefs.getBoolean(Prefs.KEY_HOTSPOT_AT_START, true)
+        val atStart = prefs.getBoolean(Prefs.KEY_HOTSPOT_AT_START, false)
         val items = arrayOf(
             getString(R.string.hotspot_toggle_now),
             getString(if (atStart) R.string.hotspot_at_start_on else R.string.hotspot_at_start_off),
@@ -1103,86 +1106,7 @@ class HomeActivity : Activity() {
     // ---------------------------------------------------------------- back screen (KidsDeck)
 
     private fun showBackScreen() {
-        RearLink.init(this)
-        val backs = RearLink.connectedBacks()
-            .map { it.lowercase(Locale.getDefault()).replaceFirstChar { c -> c.titlecase(Locale.getDefault()) } }
-        val status = if (backs.isEmpty()) getString(R.string.rear_missing)
-        else getString(R.string.rear_connected, backs.joinToString())
-        val follow = RearLink.followPkg
-        val now = when {
-            RearLink.ytVideo != null -> getString(R.string.rear_now_youtube)
-            follow != null -> getString(R.string.rear_now_follow, backAppName(follow))
-            else -> null
-        }
-        // Each menu line with what it does, so the order is easy to change.
-        val actions = mutableListOf<Pair<String, () -> Unit>>()
-        actions.add(getString(R.string.rear_play_copied) to { playCopiedLinkInBack() })
-        actions.add(getString(R.string.rear_playpause) to {
-            val playing = controller?.playbackState?.state == PlaybackState.STATE_PLAYING
-            mediaAction(if (playing) KeyEvent.KEYCODE_MEDIA_PAUSE else KeyEvent.KEYCODE_MEDIA_PLAY)
-            RearLink.playPauseBack(this, !playing)
-        })
-        listOf(Link.NETFLIX, Link.PRIME, Link.YOUTUBE).forEach { pkg ->
-            actions.add(getString(R.string.rear_open, backAppName(pkg)) to {
-                RearLink.openInBack(this, pkg)
-                toast(getString(R.string.rear_opened, backAppName(pkg)))
-            })
-        }
-        actions.add(getString(R.string.rear_stop) to {
-            RearLink.stop(this)
-            toast(getString(R.string.rear_stopped))
-        })
-        actions.add(getString(R.string.rear_youtube_how) to {
-            AlertDialog.Builder(this)
-                .setTitle(R.string.rear_youtube_how)
-                .setMessage(R.string.rear_youtube_help)
-                .setPositiveButton(R.string.done, null)
-                .show()
-        })
-
-        val header = TextView(this).apply {
-            text = getString(R.string.rear_title) + "\n" + status + (now?.let { "\n" + it } ?: "")
-            setTextColor(getColor(R.color.text))
-            textSize = 16f
-            setPadding(dp(24), dp(20), dp(24), dp(8))
-        }
-        AlertDialog.Builder(this)
-            .setCustomTitle(header)
-            .setItems(actions.map { it.first }.toTypedArray()) { _, which -> actions[which].second() }
-            .show()
-    }
-
-    /** YouTube → Share → Copy link, then this: the back screen plays that video in sync. */
-    private fun playCopiedLinkInBack() {
-        val text = try {
-            val cm = getSystemService(ClipboardManager::class.java)
-            val clip = cm?.primaryClip
-            if (clip != null && clip.itemCount > 0) clip.getItemAt(0).coerceToText(this)?.toString() else null
-        } catch (e: Exception) {
-            null
-        }
-        val id = Link.youtubeId(text)
-        if (id == null) {
-            toast(getString(R.string.rear_no_copied_link))
-            return
-        }
-        RearLink.startYouTube(this, id, Link.youtubeStartMs(text))
-        val backs = RearLink.connectedBacks()
-        toast(
-            if (backs.isEmpty()) getString(R.string.rear_sent_searching)
-            else getString(R.string.rear_sent, backs.joinToString {
-                it.lowercase(Locale.getDefault()).replaceFirstChar { c -> c.titlecase(Locale.getDefault()) }
-            })
-        )
-        // Back to YouTube, which keeps playing at the front.
-        Apps.launch(this, Link.YOUTUBE)
-    }
-
-    private fun backAppName(pkg: String): String = when (pkg) {
-        Link.NETFLIX -> "Netflix"
-        Link.PRIME, Link.PRIME_TV -> "Prime Video"
-        Link.YOUTUBE -> "YouTube"
-        else -> Apps.label(this, pkg)
+        BackPanel(this).show()
     }
 
     // ---------------------------------------------------------------- settings
@@ -1190,6 +1114,7 @@ class HomeActivity : Activity() {
     private fun showSettings() {
         val items = arrayOf(
             getString(R.string.choose_nav),
+            getString(R.string.choose_phone),
             getString(R.string.home_controls),
             getString(R.string.appearance),
             getString(R.string.tile_settings),
@@ -1203,18 +1128,41 @@ class HomeActivity : Activity() {
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> chooseNavApp()
-                    1 -> showHomeControls()
-                    2 -> chooseAppearance()
-                    3 -> showTileSettings()
-                    4 -> showHotspotSettings()
-                    5 -> explainThenOpen(
+                    1 -> choosePhoneApp()
+                    2 -> showHomeControls()
+                    3 -> chooseAppearance()
+                    4 -> showTileSettings()
+                    5 -> showHotspotSettings()
+                    6 -> explainThenOpen(
                         R.string.media_off_title,
                         getString(R.string.listener_label),
                         Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS),
                     )
-                    6 -> if (!safeStart(Intent(Settings.ACTION_HOME_SETTINGS))) safeStart(Intent(Settings.ACTION_SETTINGS))
-                    7 -> safeStart(Intent(Settings.ACTION_SETTINGS))
+                    7 -> if (!safeStart(Intent(Settings.ACTION_HOME_SETTINGS))) safeStart(Intent(Settings.ACTION_SETTINGS))
+                    8 -> safeStart(Intent(Settings.ACTION_SETTINGS))
                 }
+            }
+            .show()
+    }
+
+    /** Which app gets the green phone icon (and is pinned by default). */
+    private fun choosePhoneApp() {
+        val list = apps.ifEmpty { Apps.load(this) }
+        if (list.isEmpty()) return
+        AlertDialog.Builder(this)
+            .setTitle(R.string.choose_phone)
+            .setItems(list.map { it.label }.toTypedArray()) { _, which ->
+                val old = Apps.phonePackage(this)
+                val pkg = list[which].packageName
+                prefs.edit().putString(Prefs.KEY_PHONE, pkg).apply()
+                Apps.resetPhone()
+                // Swap the pin from the old phone app to the new one.
+                val p = pins()
+                val i = p.indexOf(old)
+                if (i >= 0) p[i] = pkg else if (pkg !in p && p.size < Prefs.MAX_PINS) p.add(0, pkg)
+                savePins(p.distinct())
+                loadAppsAsync()
+                renderDock()
             }
             .show()
     }

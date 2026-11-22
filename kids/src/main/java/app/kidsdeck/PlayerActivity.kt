@@ -16,11 +16,16 @@ import android.webkit.WebViewClient
 import android.widget.TextView
 import app.decklink.Link
 
-/** Full-screen YouTube player that follows the front. */
+/**
+ * Full-screen YouTube player. Either follows the front ("play along"), or plays a video on
+ * its own ("solo") so the front is free; then the front can still play, pause and stop it.
+ */
 class PlayerActivity : Activity() {
 
     companion object {
         const val EXTRA_VIDEO = "video"
+        const val EXTRA_SOLO = "solo"
+        const val EXTRA_START_MS = "start"
         private const val ORIGIN = "https://kidsdeck.app"
         private const val SYNC_MS = 1000L
 
@@ -29,6 +34,10 @@ class PlayerActivity : Activity() {
     }
 
     var videoId: String = ""
+        private set
+    var solo = false
+        private set
+    @Volatile var isPlaying = false
         private set
 
     private val handler = Handler(Looper.getMainLooper())
@@ -39,7 +48,7 @@ class PlayerActivity : Activity() {
 
     private val tick = object : Runnable {
         override fun run() {
-            LinkService.yt?.takeIf { it.videoId == videoId }?.let { sync(it) }
+            if (!solo) LinkService.yt?.takeIf { it.videoId == videoId }?.let { sync(it) }
             handler.postDelayed(this, SYNC_MS)
         }
     }
@@ -103,10 +112,15 @@ class PlayerActivity : Activity() {
 
     private fun load(intent: Intent) {
         val id = intent.getStringExtra(EXTRA_VIDEO) ?: run { finish(); return }
-        if (id == videoId && ready) return
+        val wantSolo = intent.getBooleanExtra(EXTRA_SOLO, false)
+        if (id == videoId && ready && wantSolo == solo && !wantSolo) return
         videoId = id
+        solo = wantSolo
         ready = false
-        val startSec = ((LinkService.yt?.takeIf { it.videoId == id }?.positionNow() ?: 0L) / 1000L).coerceAtLeast(0L)
+        isPlaying = false
+        val startMs = if (solo) intent.getLongExtra(EXTRA_START_MS, 0L)
+        else LinkService.yt?.takeIf { it.videoId == id }?.positionNow() ?: 0L
+        val startSec = (startMs / 1000L).coerceAtLeast(0L)
         val html = assets.open("player.html").bufferedReader().use { it.readText() }
             .replace("__VIDEO__", id)
             .replace("__START__", startSec.toString())
@@ -117,12 +131,18 @@ class PlayerActivity : Activity() {
 
     /** Called about once a second with the front's latest state. */
     fun sync(state: LinkService.YtState) {
-        if (!ready || state.videoId != videoId) return
+        if (!ready || solo || state.videoId != videoId) return
         web.evaluateJavascript("sync(${state.positionNow()}, ${state.playing})", null)
     }
 
+    /** Play or pause from the front (solo videos; while playing along, the front's own state wins). */
+    fun setPlaying(play: Boolean) {
+        if (!ready) return
+        web.evaluateJavascript(if (play) "player.playVideo()" else "player.pauseVideo()", null)
+    }
+
     private fun showOverlay() {
-        overlayText.setText(R.string.playing_along)
+        overlayText.setText(if (solo) R.string.playing_solo else R.string.playing_along)
         overlay.animate().alpha(1f).setDuration(180).start()
         handler.removeCallbacks(hideOverlay)
         handler.postDelayed(hideOverlay, 3500)
@@ -154,7 +174,7 @@ class PlayerActivity : Activity() {
         fun onReady() {
             handler.post {
                 ready = true
-                LinkService.yt?.takeIf { it.videoId == videoId }?.let { sync(it) }
+                if (!solo) LinkService.yt?.takeIf { it.videoId == videoId }?.let { sync(it) }
             }
         }
 
@@ -166,6 +186,11 @@ class PlayerActivity : Activity() {
 
         @JavascriptInterface
         fun onState(state: Int) {
+            val playing = state == 1
+            if (playing != isPlaying) {
+                isPlaying = playing
+                LinkService.announceNow()
+            }
             // 0 = ended: go back to the home screen.
             if (state == 0) handler.postDelayed({
                 LinkService.dismissedVideo = videoId

@@ -10,8 +10,9 @@
 <body>
 <div id="p"></div>
 <script>
-  // Plays one YouTube video and keeps it in step with the front (DriveDeck).
-  var player = null, ready = false, pending = null, lastSeek = 0;
+  // Plays one YouTube video. When playing along, sync() keeps it in step with the front.
+  var player = null, ready = false, pending = null;
+  var lastSeek = 0, checkAt = 0, bias = 0;
 
   var tag = document.createElement('script');
   tag.src = 'https://www.youtube.com/iframe_api';
@@ -27,7 +28,7 @@
       events: {
         onReady: function () {
           ready = true;
-          try { player.unMute(); player.setVolume(100); } catch (e) {}
+          try { player.unMute(); player.setVolume(100); player.playVideo(); } catch (e) {}
           Android.onReady();
           if (pending) { sync(pending[0], pending[1]); pending = null; }
         },
@@ -37,13 +38,23 @@
     });
   }
 
-  // pos: where the front is now (ms); playing: whether it's playing.
+  // pos: where the front is now (ms, already corrected for its Bluetooth delay); playing: its state.
   function sync(pos, playing) {
     if (!ready) { pending = [pos, playing]; return; }
     var state = player.getPlayerState();   // 1 playing, 2 paused, 3 buffering, 0 ended
     var now = Date.now();
-    var here = player.getCurrentTime() * 1000;
-    if (Math.abs(here - pos) > 800 && now - lastSeek > 2500) {
+    var diff = player.getCurrentTime() * 1000 - pos;   // > 0: we're ahead
+    if (playing && state === 1) {
+      // A while after a seek, learn how far it landed off (buffering), and aim better next time.
+      if (checkAt && now > checkAt) {
+        bias = Math.max(-2000, Math.min(2000, bias - diff * 0.7));
+        checkAt = 0;
+      }
+      if (Math.abs(diff) > 300 && now - lastSeek > 4000) {
+        player.seekTo((pos + bias) / 1000, true);
+        lastSeek = now; checkAt = now + 2500;
+      }
+    } else if (!playing && Math.abs(diff) > 500 && now - lastSeek > 1500) {
       player.seekTo(pos / 1000, true);
       lastSeek = now;
     }

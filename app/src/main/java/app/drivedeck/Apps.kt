@@ -127,16 +127,39 @@ object Apps {
 
     // ---------------------------------------------------------------- phone app
 
-    /** Best guess at the TBox's phone (dialer) app, or null. */
+    /**
+     * The phone app shown with the green icon: the one picked in settings, else the box's
+     * Bluetooth phone app (calls go through the car), else the regular dialer.
+     */
     @Suppress("DEPRECATION")
     fun phonePackage(context: Context): String? {
+        val chosen = Prefs.get(context).getString(Prefs.KEY_PHONE, null)
+        if (chosen != null && isInstalled(context, chosen)) return chosen
         if (phonePkgChecked) return phonePkgCache
         val pm = context.packageManager
-        var found: String? = null
-        try {
-            val tm = context.getSystemService(TelecomManager::class.java)
-            found = tm?.defaultDialerPackage?.takeIf { isInstalled(context, it) }
+        val launchable = try {
+            pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
         } catch (e: Exception) {
+            emptyList()
+        }
+        // 1. A Bluetooth phone app, by name or package.
+        var found: String? = launchable.firstOrNull { ri ->
+            val l = ri.loadLabel(pm).toString().lowercase().trim()
+            val p = ri.activityInfo.packageName.lowercase()
+            val btLabel = l.contains("bluetooth") || l.startsWith("bt") || l.contains("蓝牙")
+            val phoneLabel = l.contains("phone") || l.contains("telefo") || l.contains("call") ||
+                l.contains("dial") || l.contains("bel") || l.contains("电话") || l == "bluetooth" || l == "bt"
+            val btPkg = (p.contains("bluetooth") || p.contains("btphone") || p.contains(".bt.") || p.contains("btcall") ||
+                p.contains("btdial")) && !p.startsWith("com.android.bluetooth")
+            (btLabel && phoneLabel) || btPkg
+        }?.activityInfo?.packageName
+        // 2. The default dialer.
+        if (found == null) {
+            try {
+                val tm = context.getSystemService(TelecomManager::class.java)
+                found = tm?.defaultDialerPackage?.takeIf { isInstalled(context, it) }
+            } catch (e: Exception) {
+            }
         }
         if (found == null) {
             found = try {
@@ -146,11 +169,10 @@ object Apps {
                 null
             }
         }
+        // 3. Anything simply called "Phone".
         if (found == null) {
-            val names = listOf("phone", "telefoon", "telefon", "téléphone", "dialer", "bt phone", "bluetooth phone")
-            found = pm.queryIntentActivities(
-                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0,
-            ).firstOrNull { ri ->
+            val names = listOf("phone", "telefoon", "telefon", "téléphone", "dialer")
+            found = launchable.firstOrNull { ri ->
                 val l = ri.loadLabel(pm).toString().lowercase().trim()
                 names.any { l == it }
             }?.activityInfo?.packageName
@@ -158,6 +180,13 @@ object Apps {
         phonePkgCache = found
         phonePkgChecked = true
         return found
+    }
+
+    /** Forget the cached guess, e.g. after picking another phone app. */
+    fun resetPhone() {
+        phonePkgChecked = false
+        phonePkgCache = null
+        iconCache.clear()
     }
 
     /** iPhone-style phone icon: white handset on a green rounded square. */

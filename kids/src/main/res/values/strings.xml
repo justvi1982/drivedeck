@@ -7,6 +7,7 @@
     <string name="front_connected">VOORIN VERBONDEN</string>
     <string name="front_missing">NIET VERBONDEN</string>
     <string name="playing_along">Kijkt mee met voorin</string>
+    <string name="playing_solo">Gestart vanaf voorin</string>
     <string name="cant_embed">Deze video opent in YouTube</string>
     <string name="parent_title">Instellingen voor ouders</string>
     <string name="parent_apps">Apps op het startscherm</string>

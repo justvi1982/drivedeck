@@ -70,6 +70,7 @@ class HomeActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_home)
+        findViewById<View>(R.id.root).background = OemBackground(resources.displayMetrics.density)
         clock = findViewById(R.id.clock)
         date = findViewById(R.id.date)
         tiles = findViewById(R.id.tiles)
@@ -191,7 +192,6 @@ class HomeActivity : Activity() {
             setBackgroundResource(R.drawable.bg_tile)
             isClickable = true
             isFocusable = true
-            elevation = dp(6).toFloat()
         }
         val icon = ImageView(this).apply {
             setImageDrawable(Apps.icon(this@HomeActivity, pkg, iconSize))
@@ -344,7 +344,7 @@ class HomeActivity : Activity() {
         val items = arrayOf(
             getString(R.string.parent_apps),
             getString(R.string.parent_name) + " · " + Prefs.screenName(this).lowercase(nl),
-            if (follow) "Meekijken met voorin: aan" else "Meekijken met voorin: uit",
+            if (follow) "Bediening vanaf voorin: aan" else "Bediening vanaf voorin: uit",
             getString(R.string.parent_media),
             getString(R.string.parent_all_apps),
             getString(R.string.parent_wifi),
@@ -359,7 +359,7 @@ class HomeActivity : Activity() {
                     1 -> chooseName()
                     2 -> {
                         Prefs.get(this).edit().putBoolean(Prefs.KEY_FOLLOW, !follow).apply()
-                        toast(if (!follow) "Dit scherm kijkt mee met voorin" else "Dit scherm kijkt niet meer mee")
+                        toast(if (!follow) "Voorin kan dit scherm nu bedienen" else "Voorin kan dit scherm niet meer bedienen")
                     }
                     3 -> AlertDialog.Builder(this)
                         .setTitle(R.string.parent_media)

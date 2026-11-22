@@ -91,4 +91,26 @@
     <string name="hotspot_toggle_now">Switch hotspot on or off now</string>
     <string name="hotspot_open_settings">Open hotspot settings</string>
     <string name="hotspot_tip">Tip: in the hotspot settings, switch off \"Turn off hotspot automatically\", otherwise Android turns it off when the back screens are off for a while.</string>
+    <string name="choose_phone">Choose phone app (green icon)</string>
+    <string name="panel_screen">SCREEN</string>
+    <string name="panel_mode">MODE</string>
+    <string name="panel_playback">PLAYBACK</string>
+    <string name="panel_volume">VOLUME</string>
+    <string name="panel_start">START IN THE BACK</string>
+    <string name="panel_open">OPEN IN THE BACK</string>
+    <string name="panel_delay">SOUND DELAY (TOGETHER)</string>
+    <string name="panel_delay_hint">Is the back ahead of the sound at the front? Press +. Behind? Press −.</string>
+    <string name="panel_together">Together</string>
+    <string name="panel_solo">Back only</string>
+    <string name="panel_both">Both</string>
+    <string name="panel_stop">Stop</string>
+    <string name="panel_mute">Mute</string>
+    <string name="panel_unmute">Unmute</string>
+    <string name="panel_muted">muted</string>
+    <string name="panel_play_copied">▶  Play copied link</string>
+    <string name="panel_copy_hint">In YouTube, Netflix or Prime: Share → Copy link, then tap this. Together: plays along with YouTube at the front. Back only: plays on its own.</string>
+    <string name="panel_none">No back screen found</string>
+    <string name="panel_follow_off">playing along switched off on this screen</string>
+    <string name="panel_what_together">YouTube, together</string>
+    <string name="panel_what_home">home screen</string>
 </resources>
