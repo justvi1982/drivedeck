@@ -188,6 +188,16 @@ object RearLink {
         worker.post { sendOnce(cmd("vol").put("mute", muted)) }
     }
 
+    /** Stop the back screens that are playing along. */
+    fun stopTogether(context: Context) {
+        init(context)
+        worker.post {
+            if (ytVideo == null) return@post
+            ytVideo = null
+            sendOnce(Link.msg("stop", Link.ROLE_FRONT).put("to", ytTo))
+        }
+    }
+
     fun stop(context: Context) {
         init(context)
         worker.post {
@@ -231,6 +241,18 @@ object RearLink {
 
     private fun stepYouTube(video: String) {
         val now = SystemClock.elapsedRealtime()
+        // DriveDeck's own front player: follow it exactly, picture as late as the car's sound.
+        if (FrontPlayerActivity.videoId == video) {
+            ytLastSession = now
+            send(
+                Link.msg("yt", Link.ROLE_FRONT)
+                    .put("to", ytTo)
+                    .put("v", video)
+                    .put("p", (FrontPlayerActivity.positionNow() - delayMs).coerceAtLeast(0L))
+                    .put("s", if (FrontPlayerActivity.playing) 1 else 0)
+            )
+            return
+        }
         val c = controllerFor(Link.YOUTUBE)
         if (c == null) {
             if (now - ytLastSession > NO_SESSION_GIVE_UP_MS) {

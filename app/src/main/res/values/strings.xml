@@ -98,8 +98,8 @@
     <string name="panel_volume">VOLUME</string>
     <string name="panel_start">START IN THE BACK</string>
     <string name="panel_open">OPEN IN THE BACK</string>
-    <string name="panel_delay">SOUND DELAY (TOGETHER)</string>
-    <string name="panel_delay_hint">Is the back ahead of the sound at the front? Press +. Behind? Press −.</string>
+    <string name="panel_delay">SOUND DELAY OF THE CAR</string>
+    <string name="panel_delay_hint">How much later the car plays the sound. Picture ahead of the sound? Press +. Behind? Press −. Steps of 0.01 s; hold for 0.1 s.</string>
     <string name="panel_together">Together</string>
     <string name="panel_solo">Back only</string>
     <string name="panel_both">Both</string>
@@ -113,4 +113,7 @@
     <string name="panel_follow_off">playing along switched off on this screen</string>
     <string name="panel_what_together">YouTube, together</string>
     <string name="panel_what_home">home screen</string>
+    <string name="panel_front_player">▶  Copied YouTube link in the front player (in sync with the car)</string>
+    <string name="front_delay">Sound delay</string>
+    <string name="front_cant_embed">This video can\'t play in DriveDeck\'s player. Open it in YouTube instead.</string>
 </resources>

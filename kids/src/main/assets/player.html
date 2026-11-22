@@ -38,25 +38,44 @@
     });
   }
 
-  // pos: where the front is now (ms, already corrected for its Bluetooth delay); playing: its state.
+  // Small differences: run a touch faster or slower until in step (smooth, no jumps).
+  // Big differences: jump, and learn how far jumps land off. Some players can't change speed
+  // in small steps; then only jumps are used.
+  var rateOk = true, rate = 1;
+  function setRate(r) {
+    if (!rateOk || r === rate) return;
+    try {
+      player.setPlaybackRate(r);
+      if (Math.abs(player.getPlaybackRate() - r) > 0.01) { rateOk = false; player.setPlaybackRate(1); rate = 1; return; }
+      rate = r;
+    } catch (e) { rateOk = false; }
+  }
+
+  // pos: where the front's picture should be now (ms, already allowing for the car's sound delay).
   function sync(pos, playing) {
     if (!ready) { pending = [pos, playing]; return; }
     var state = player.getPlayerState();   // 1 playing, 2 paused, 3 buffering, 0 ended
     var now = Date.now();
     var diff = player.getCurrentTime() * 1000 - pos;   // > 0: we're ahead
     if (playing && state === 1) {
-      // A while after a seek, learn how far it landed off (buffering), and aim better next time.
       if (checkAt && now > checkAt) {
         bias = Math.max(-2000, Math.min(2000, bias - diff * 0.7));
         checkAt = 0;
       }
-      if (Math.abs(diff) > 300 && now - lastSeek > 4000) {
-        player.seekTo((pos + bias) / 1000, true);
-        lastSeek = now; checkAt = now + 2500;
+      if (Math.abs(diff) > 800 || (!rateOk && Math.abs(diff) > 200)) {
+        if (now - lastSeek > 3000) {
+          setRate(1);
+          player.seekTo((pos + bias) / 1000, true);
+          lastSeek = now; checkAt = now + 2500;
+        }
+      } else if (Math.abs(diff) > 40) {
+        setRate(diff > 0 ? 0.95 : 1.05);
+      } else {
+        setRate(1);
       }
-    } else if (!playing && Math.abs(diff) > 500 && now - lastSeek > 1500) {
-      player.seekTo(pos / 1000, true);
-      lastSeek = now;
+    } else if (!playing) {
+      setRate(1);
+      if (Math.abs(diff) > 300 && now - lastSeek > 1000) { player.seekTo(pos / 1000, true); lastSeek = now; }
     }
     if (playing && state !== 1 && state !== 3) player.playVideo();
     if (!playing && (state === 1 || state === 3)) player.pauseVideo();

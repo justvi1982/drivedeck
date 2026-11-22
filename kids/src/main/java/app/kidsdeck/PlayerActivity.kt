@@ -27,7 +27,7 @@ class PlayerActivity : Activity() {
         const val EXTRA_SOLO = "solo"
         const val EXTRA_START_MS = "start"
         private const val ORIGIN = "https://kidsdeck.app"
-        private const val SYNC_MS = 1000L
+        private const val SYNC_MS = 500L
 
         @Volatile var current: PlayerActivity? = null
             private set

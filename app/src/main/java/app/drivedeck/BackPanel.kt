@@ -80,6 +80,23 @@ object BackActions {
         return true
     }
 
+    /**
+     * Play a copied YouTube link in DriveDeck's own front player, with the picture as late as
+     * the car's sound. In Together mode the back screens follow it.
+     */
+    fun playInFrontPlayer(context: Context, text: String?): Boolean {
+        RearLink.init(context)
+        val yt = Link.youtubeId(text)
+        if (yt == null) {
+            toast(context, context.getString(R.string.rear_no_copied_link))
+            return false
+        }
+        val start = Link.youtubeStartMs(text)
+        FrontPlayerActivity.start(context, yt, start)
+        if (RearLink.mode == RearLink.MODE_TOGETHER) RearLink.playTogether(context, yt, start)
+        return true
+    }
+
     /** Play or pause. Together: the front's player leads and the back follows. */
     fun playPause(context: Context, play: Boolean) {
         RearLink.init(context)
@@ -234,6 +251,9 @@ class BackPanel(private val activity: Activity) {
             if (BackActions.sendLink(activity, BackActions.clipboardText(activity), backToYouTube = true) &&
                 RearLink.mode == RearLink.MODE_TOGETHER) dialog.dismiss()
         }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(54)).apply { topMargin = dp(4) })
+        right.addView(pill(activity.getString(R.string.panel_front_player), false) {
+            if (BackActions.playInFrontPlayer(activity, BackActions.clipboardText(activity))) dialog.dismiss()
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(50)).apply { topMargin = dp(8) })
         right.addView(TextView(activity).apply {
             setText(R.string.panel_copy_hint)
             setTextColor(color(R.color.text2))
@@ -254,16 +274,18 @@ class BackPanel(private val activity: Activity) {
         delaySection = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
         delaySection.addView(label(R.string.panel_delay))
         val delayRow = row()
-        delayRow.addView(pill("−", false) { RearLink.delayMs = RearLink.delayMs - 50; render() },
-            LinearLayout.LayoutParams(dp(56), dp(48)))
+        delayRow.addView(pill("−", false) { RearLink.delayMs = RearLink.delayMs - 10; render() }.also {
+            it.setOnLongClickListener { RearLink.delayMs = RearLink.delayMs - 100; render(); true }
+        }, LinearLayout.LayoutParams(dp(56), dp(48)))
         delayLabel = TextView(activity).apply {
             setTextColor(color(R.color.text))
             textSize = 17f
             gravity = Gravity.CENTER
         }
         delayRow.addView(delayLabel, LinearLayout.LayoutParams(dp(96), dp(48)))
-        delayRow.addView(pill("+", false) { RearLink.delayMs = RearLink.delayMs + 50; render() },
-            LinearLayout.LayoutParams(dp(56), dp(48)))
+        delayRow.addView(pill("+", false) { RearLink.delayMs = RearLink.delayMs + 10; render() }.also {
+            it.setOnLongClickListener { RearLink.delayMs = RearLink.delayMs + 100; render(); true }
+        }, LinearLayout.LayoutParams(dp(56), dp(48)))
         delaySection.addView(delayRow)
         delaySection.addView(TextView(activity).apply {
             setText(R.string.panel_delay_hint)
@@ -324,7 +346,6 @@ class BackPanel(private val activity: Activity) {
                 render()
             }, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginStart = dp(8) })
         }
-        delaySection.visibility = if (together) View.VISIBLE else View.GONE
         delayLabel.text = String.format(Locale.getDefault(), "%.2f s", RearLink.delayMs / 1000f)
 
         // Status and volume of the chosen screens.

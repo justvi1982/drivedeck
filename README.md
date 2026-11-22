@@ -50,11 +50,12 @@ On DriveDeck, tap the small screen button on the now-playing card. One panel has
 
 - **Screen:** right, left or both.
 - **Mode:**
-  - **Together:** the back plays the same YouTube video as the YouTube app at the front and follows play, pause and skipping. **Sound delay** makes up for the car's Bluetooth sound (press + if the back is ahead of the sound). Netflix and Prime in the back follow the front's play and pause.
+  - **Together:** the back plays the same YouTube video as the YouTube app at the front and follows play, pause and skipping. **Sound delay** makes up for the car playing the sound late (press + if the picture is ahead of the sound; steps of 0.01 s, hold for 0.1 s). Netflix and Prime in the back follow the front's play and pause.
   - **Back only:** the back plays on its own, so the front is free for Spotify and the like.
 - **Play, pause, stop, volume and mute** for the chosen screen(s).
 - **Play copied link:** in YouTube, Netflix or Prime, tap Share → Copy link, then this. YouTube videos play right away; Netflix and Prime open the title (and DriveDeck presses play a few seconds later). Long-pressing the screen button does the same without opening the panel. Share → More → **Play in the back** works too.
 - **Open Netflix / Prime Video / YouTube** in the back.
+- **Front player (experimental):** the car plays the TBox's sound a little late, so in the YouTube app the picture runs ahead. **Copied YouTube link in the front player** plays the video in DriveDeck's own player, with the picture held back by the **sound delay** so it lines up with the car's sound. In Together mode the back screens follow it too (picture in step with the car's sound, so the back can stay muted). Tap the video for controls: close, −10 s, play/pause, +10 s and the sound delay (steps of 0.01 s, hold for 0.1 s). It uses two video streams at once, so it uses more mobile data.
 
 If a YouTube video can't play outside YouTube, the back opens it in its YouTube app instead. The kids can close a video with ✕. Switch control from the front off on a screen in its parent settings.
 

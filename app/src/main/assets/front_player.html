@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
+  /* The sound player sits hidden behind the picture player. */
+  #a { position: absolute; left: 0; top: 0; width: 240px; height: 240px; z-index: 1; }
+  #v { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 2; background: #000; }
+</style>
+</head>
+<body>
+<div id="a"></div>
+<div id="v"></div>
+<script>
+  // Two players for one video. "a" plays the sound and leads. "v" shows the picture, muted,
+  // DELAY ms behind "a", because the car plays the sound that much later than the TBox.
+  var A = null, V = null, readyA = false, readyV = false;
+  var DELAY = __DELAY__;
+  var lastSeek = 0, checkAt = 0, bias = 0, rateOk = true, rate = 1;
+
+  var tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+
+  function vars() {
+    return { autoplay: 1, controls: 0, disablekb: 1, fs: 0, rel: 0, playsinline: 1,
+             iv_load_policy: 3, start: __START__, origin: '__ORIGIN__' };
+  }
+
+  function onYouTubeIframeAPIReady() {
+    A = new YT.Player('a', { width: '240', height: '240', videoId: '__VIDEO__', playerVars: vars(),
+      events: {
+        onReady: function () { readyA = true; try { A.unMute(); A.setVolume(100); A.playVideo(); } catch (e) {} },
+        onError: function (e) { Android.onError(e.data); },
+        onStateChange: function (e) { Android.onState(e.data); }
+      } });
+    V = new YT.Player('v', { width: '100%', height: '100%', videoId: '__VIDEO__', playerVars: vars(),
+      events: {
+        onReady: function () { readyV = true; try { V.mute(); V.playVideo(); } catch (e) {} }
+      } });
+    setInterval(tick, 500);
+  }
+
+  function setRate(r) {
+    if (!rateOk || r === rate) return;
+    try {
+      V.setPlaybackRate(r);
+      if (Math.abs(V.getPlaybackRate() - r) > 0.01) { rateOk = false; V.setPlaybackRate(1); rate = 1; return; }
+      rate = r;
+    } catch (e) { rateOk = false; }
+  }
+
+  function tick() {
+    if (!readyA) return;
+    var stA = A.getPlayerState();
+    var posA = A.getCurrentTime() * 1000;
+    var playing = stA === 1;
+    Android.onTick(Math.round(posA), playing);
+    if (!readyV) return;
+    var stV = V.getPlayerState();
+    var target = Math.max(0, posA - DELAY);
+    var now = Date.now();
+    var diff = V.getCurrentTime() * 1000 - target;   // > 0: picture ahead of the sound
+    if (playing) {
+      if (stV !== 1 && stV !== 3) V.playVideo();
+      if (stV === 1) {
+        if (checkAt && now > checkAt) { bias = Math.max(-2000, Math.min(2000, bias - diff * 0.7)); checkAt = 0; }
+        if (Math.abs(diff) > 800 || (!rateOk && Math.abs(diff) > 200)) {
+          if (now - lastSeek > 3000) { setRate(1); V.seekTo((target + bias) / 1000, true); lastSeek = now; checkAt = now + 2500; }
+        } else if (Math.abs(diff) > 40) {
+          setRate(diff > 0 ? 0.95 : 1.05);      // gently catch up or fall back
+        } else {
+          setRate(1);
+        }
+      }
+    } else {
+      setRate(1);
+      if (stV === 1 || stV === 3) V.pauseVideo();
+      if (Math.abs(diff) > 300 && now - lastSeek > 1000) { V.seekTo(target / 1000, true); lastSeek = now; }
+    }
+  }
+
+  function play() { if (readyA) A.playVideo(); }
+  function pause() { if (readyA) A.pauseVideo(); }
+  function toggle() { if (!readyA) return; if (A.getPlayerState() === 1) A.pauseVideo(); else A.playVideo(); }
+  function seekBy(sec) {
+    if (!readyA) return;
+    var t = Math.max(0, A.getCurrentTime() + sec);
+    A.seekTo(t, true);
+    if (readyV) { V.seekTo(Math.max(0, t - DELAY / 1000), true); lastSeek = Date.now(); }
+  }
+  function setDelay(ms) { DELAY = ms; }
+</script>
+</body>
+</html>
