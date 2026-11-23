@@ -32,8 +32,8 @@
     <string name="open_settings">Open settings</string>
     <string name="cancel">Cancel</string>
     <string name="done">Done</string>
-    <string name="opt_home_button">Floating home button</string>
-    <string name="opt_swipe_home">Swipe up from the bottom (swipe and hold: open apps)</string>
+    <string name="opt_home_button">Floating home button (tap = home, double-tap = split screen, hold = open apps)</string>
+    <string name="opt_swipe_home">Bottom bar: swipe up = home, swipe and hold = open apps, swipe sideways = switch app, double-tap = split screen</string>
     <string name="hide_in_apps">Hide in apps…</string>
     <string name="hide_in_title">Hide home controls in</string>
     <string name="choose_tile">Choose app for the small tile</string>
@@ -119,4 +119,6 @@
     <string name="switcher_title">Open apps</string>
     <string name="switcher_empty">No recent apps yet</string>
     <string name="opt_own_switcher">Use DriveDeck\'s app switcher (if swiping up and holding shows nothing)</string>
+    <string name="split_pick">Open next to it</string>
+    <string name="opt_own_split">Use DriveDeck\'s split-screen picker (if double-tapping shows nothing)</string>
 </resources>

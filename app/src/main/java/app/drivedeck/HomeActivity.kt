@@ -1247,8 +1247,8 @@ class HomeActivity : Activity() {
             )
             return
         }
-        val keys = arrayOf(Prefs.KEY_HOME_BUTTON, Prefs.KEY_SWIPE_HOME, Prefs.KEY_SHOW_ON_HOME, Prefs.KEY_OWN_SWITCHER)
-        val defaults = booleanArrayOf(true, true, false, false)
+        val keys = arrayOf(Prefs.KEY_HOME_BUTTON, Prefs.KEY_SWIPE_HOME, Prefs.KEY_SHOW_ON_HOME, Prefs.KEY_OWN_SWITCHER, Prefs.KEY_OWN_SPLIT)
+        val defaults = booleanArrayOf(true, true, false, false, false)
         val checked = BooleanArray(keys.size) { prefs.getBoolean(keys[it], defaults[it]) }
         AlertDialog.Builder(this)
             .setTitle(R.string.home_controls)
@@ -1258,6 +1258,7 @@ class HomeActivity : Activity() {
                     getString(R.string.opt_swipe_home),
                     getString(R.string.opt_show_on_home),
                     getString(R.string.opt_own_switcher),
+                    getString(R.string.opt_own_split),
                 ),
                 checked,
             ) { _, which, isChecked ->

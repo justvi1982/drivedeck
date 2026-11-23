@@ -17,6 +17,7 @@ import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.widget.FrameLayout
@@ -39,6 +40,8 @@ import kotlin.math.roundToInt
 class HomeGestureService : AccessibilityService() {
 
     companion object {
+        private const val DOUBLE_TAP_MS = 280L
+
         @Volatile
         var homeVisible = false
             private set
@@ -145,6 +148,52 @@ class HomeGestureService : AccessibilityService() {
         }
     }
 
+    /**
+     * Split screen: the app in front moves to one half and Android lets you pick the other.
+     * With DriveDeck's own picker (setting, or when Android has none), the picked app opens
+     * next to the current one.
+     */
+    fun startSplitScreen(displayId: Int) {
+        Diag.log("split screen")
+        val own = prefs.getBoolean(Prefs.KEY_OWN_SPLIT, false)
+        if (own || !performGlobalAction(AccessibilityService.GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN)) {
+            overlays[displayId]?.showSplitPicker() ?: overlays[Display.DEFAULT_DISPLAY]?.showSplitPicker()
+        }
+    }
+
+    /** Opens [pkg] next to the app in front (split screen). */
+    fun openAdjacent(pkg: String) {
+        val intent = packageManager.getLaunchIntentForPackage(pkg) ?: return
+        intent.addFlags(
+            Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK
+        )
+        try { startActivity(intent) } catch (e: Exception) { Diag.log("split open failed: $e") }
+    }
+
+    // Swiping sideways along the bar steps through recent apps, like an iPhone.
+    private var stepList: List<String> = emptyList()
+    private var stepIndex = 0
+    private var stepAt = 0L
+
+    /** [older] = true: the app before this one (swipe right); false: back again (swipe left). */
+    fun stepApp(displayId: Int, older: Boolean) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        // A new run of swipes: take a fresh list, newest first, with the current app at 0.
+        if (now - stepAt > 4000 || stepList.isEmpty()) {
+            val current = foreground[displayId]
+            val recent = Apps.recent(this, emptySet(), 10)
+            stepList = (listOfNotNull(current?.takeIf { it != packageName }) + recent).distinct()
+            stepIndex = 0
+        }
+        stepAt = now
+        if (stepList.isEmpty()) return
+        val next = (stepIndex + if (older) 1 else -1).coerceIn(0, stepList.size - 1)
+        if (next == stepIndex) return
+        stepIndex = next
+        Diag.log("switching to ${stepList[next]}")
+        Apps.launch(this, stepList[next])
+    }
+
     /** One line per display, for the status screen. */
     fun statusLines(): List<String> {
         val dm = displayManager ?: return listOf("No display service")
@@ -248,6 +297,8 @@ class HomeGestureService : AccessibilityService() {
             var startY = 0
             var dragging = false
             var longPressed = false
+            var lastTapAt = 0L
+            val singleTapHome = Runnable { goHome() }
             val buttonLongPress = Runnable {
                 if (!dragging) {
                     longPressed = true
@@ -295,7 +346,16 @@ class HomeGestureService : AccessibilityService() {
                                 .apply()
                         } else if (e.actionMasked == MotionEvent.ACTION_UP) {
                             v.performClick()
-                            goHome()
+                            val now = android.os.SystemClock.uptimeMillis()
+                            if (now - lastTapAt < DOUBLE_TAP_MS) {
+                                // Second tap: split screen instead of home.
+                                handler.removeCallbacks(singleTapHome)
+                                lastTapAt = 0L
+                                startSplitScreen(displayId)
+                            } else {
+                                lastTapAt = now
+                                handler.postDelayed(singleTapHome, DOUBLE_TAP_MS)
+                            }
                         }
                         handler.postDelayed(fadeButton, 3000)
                     }
@@ -313,6 +373,10 @@ class HomeGestureService : AccessibilityService() {
             val trigger = dp(30)
             val barSlop = ViewConfiguration.get(ctx).scaledTouchSlop
             var barDownY = 0f
+            var barDownX = 0f
+            var barDownAt = 0L
+            var lastBarTapAt = 0L
+            val sideTrigger = dp(50)
             var lastY = 0f
             var currentUp = 0f
             var switcherArmed = false
@@ -328,6 +392,8 @@ class HomeGestureService : AccessibilityService() {
                 when (e.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
                         barDownY = e.rawY
+                        barDownX = e.rawX
+                        barDownAt = android.os.SystemClock.uptimeMillis()
                         lastY = e.rawY
                         currentUp = 0f
                         switcherArmed = false
@@ -340,6 +406,8 @@ class HomeGestureService : AccessibilityService() {
                         val up = (barDownY - e.rawY).coerceAtLeast(0f)
                         currentUp = up
                         pill.translationY = -minOf(up * 0.35f, dp(14).toFloat())
+                        val side = e.rawX - barDownX
+                        pill.translationX = (side * 0.3f).coerceIn(-dp(40).toFloat(), dp(40).toFloat())
                         if (abs(e.rawY - lastY) > barSlop) {
                             // Still moving: wait for a pause.
                             lastY = e.rawY
@@ -350,10 +418,29 @@ class HomeGestureService : AccessibilityService() {
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                         handler.removeCallbacks(armSwitcher)
                         val up = barDownY - e.rawY
-                        pill.animate().translationY(0f).scaleX(1f).setDuration(150).start()
+                        val side = e.rawX - barDownX
+                        pill.animate().translationY(0f).translationX(0f).scaleX(1f).setDuration(150).start()
                         if (e.actionMasked == MotionEvent.ACTION_UP) {
                             val longSwipe = up > height() * 0.4f
+                            val sideways = abs(side) > sideTrigger && abs(side) > abs(up) * 1.5f
+                            val isTap = abs(side) < barSlop && abs(up) < barSlop &&
+                                android.os.SystemClock.uptimeMillis() - barDownAt < 300
                             when {
+                                sideways -> {
+                                    v.performClick()
+                                    // Swipe right: the app before; swipe left: back again.
+                                    stepApp(displayId, older = side > 0)
+                                }
+                                isTap -> {
+                                    val now = android.os.SystemClock.uptimeMillis()
+                                    if (now - lastBarTapAt < DOUBLE_TAP_MS) {
+                                        lastBarTapAt = 0L
+                                        v.performClick()
+                                        startSplitScreen(displayId)
+                                    } else {
+                                        lastBarTapAt = now
+                                    }
+                                }
                                 switcherArmed && up > trigger || longSwipe -> {
                                     v.performClick()
                                     openRecents()
@@ -370,6 +457,73 @@ class HomeGestureService : AccessibilityService() {
                 }
                 true
             }
+        }
+
+        private var picker: View? = null
+        private val autoHidePicker = Runnable { hideSplitPicker() }
+
+        /** DriveDeck's own split-screen picker: tap an app to open it next to the current one. */
+        fun showSplitPicker() {
+            hideSplitPicker()
+            val recent = Apps.recent(this@HomeGestureService, setOfNotNull(foreground[displayId]), 8)
+            val all = Apps.load(this@HomeGestureService).map { it.packageName }
+            val list = (recent + all).distinct().take(24)
+            val dim = FrameLayout(ctx).apply {
+                setBackgroundColor(0x99000000.toInt())
+                setOnClickListener { hideSplitPicker() }
+            }
+            val card = android.widget.LinearLayout(ctx).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    setColor(0xF21C1C1E.toInt()); cornerRadius = dp(26).toFloat()
+                }
+                setPadding(dp(20), dp(16), dp(20), dp(16))
+                isClickable = true
+            }
+            card.addView(android.widget.TextView(ctx).apply {
+                setText(R.string.split_pick)
+                setTextColor(0xFFFFFFFF.toInt())
+                textSize = 20f
+                setPadding(dp(4), 0, 0, dp(12))
+            })
+            val grid = android.widget.GridLayout(ctx).apply { columnCount = 6 }
+            list.forEach { pkg ->
+                val cell = android.widget.LinearLayout(ctx).apply {
+                    orientation = android.widget.LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER_HORIZONTAL
+                    setPadding(dp(8), dp(6), dp(8), dp(6))
+                    setOnClickListener {
+                        hideSplitPicker()
+                        openAdjacent(pkg)
+                    }
+                }
+                cell.addView(android.widget.ImageView(ctx).apply {
+                    setImageDrawable(Apps.iconFor(this@HomeGestureService, pkg, dp(56)))
+                }, android.widget.LinearLayout.LayoutParams(dp(56), dp(56)))
+                cell.addView(android.widget.TextView(ctx).apply {
+                    text = Apps.label(this@HomeGestureService, pkg)
+                    setTextColor(0xFFFFFFFF.toInt())
+                    textSize = 12f
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    gravity = Gravity.CENTER
+                }, android.widget.LinearLayout.LayoutParams(dp(84), ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(4) })
+                grid.addView(cell)
+            }
+            val scroll = android.widget.ScrollView(ctx).apply { addView(grid) }
+            card.addView(scroll, android.widget.LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, minOf(dp(320), (height() * 0.7f).roundToInt())))
+            dim.addView(card, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
+            val p = overlayParams(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT)
+            if (add(dim, p, "split picker")) {
+                picker = dim
+                handler.removeCallbacks(autoHidePicker)
+                handler.postDelayed(autoHidePicker, 20_000)
+            }
+        }
+
+        fun hideSplitPicker() {
+            picker?.let { remove(it) }
+            picker = null
         }
 
         private val fadeButton = Runnable { button.animate().alpha(0.28f).setDuration(400).start() }
