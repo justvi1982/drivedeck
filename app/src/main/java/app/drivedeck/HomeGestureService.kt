@@ -180,13 +180,20 @@ class HomeGestureService : AccessibilityService() {
         val now = android.os.SystemClock.elapsedRealtime()
         // A new run of swipes: take a fresh list, newest first, with the current app at 0.
         if (now - stepAt > 4000 || stepList.isEmpty()) {
-            val current = foreground[displayId]
             val recent = Apps.recent(this, emptySet(), 10)
-            stepList = (listOfNotNull(current?.takeIf { it != packageName }) + recent).distinct()
-            stepIndex = 0
+            if (homeVisible && homeDisplay == displayId) {
+                // On the home screen: the first swipe goes to the last app used.
+                stepList = recent
+                stepIndex = -1
+            } else {
+                val current = foreground[displayId]
+                stepList = (listOfNotNull(current?.takeIf { it != packageName }) + recent).distinct()
+                stepIndex = 0
+            }
         }
         stepAt = now
         if (stepList.isEmpty()) return
+        if (!older && stepIndex <= 0) return
         val next = (stepIndex + if (older) 1 else -1).coerceIn(0, stepList.size - 1)
         if (next == stepIndex) return
         stepIndex = next
